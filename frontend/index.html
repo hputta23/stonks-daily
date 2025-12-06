@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Stonks Daily</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/style.css?v=mobile_fix">
+    <link rel="manifest" href="/manifest.json">
+    <meta name="theme-color" content="#6366f1">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script
+        src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
+</head>
+
+<body>
+    <div class="app-container">
+        <header>
+            <div class="logo">
+                <span class="logo-icon">🪐</span>
+                <h1>Stonks Daily</h1>
+            </div>
+            <div class="banner-container">
+                <div class="scrolling-text">play not to lose</div>
+            </div>
+        </header>
+
+        <main>
+            <section class="control-panel">
+                <form id="prediction-form">
+                    <div class="input-group">
+                        <label for="ticker">Stock Ticker</label>
+                        <input type="text" id="ticker" name="ticker" placeholder="e.g., AAPL" required
+                            autocomplete="off">
+                    </div>
+                    <div class="input-group">
+                        <label for="timeframe">Prediction Timeframe</label>
+                        <select id="timeframe" name="timeframe">
+                            <option value="7">Next 7 Days</option>
+                            <option value="14">Next 14 Days</option>
+                            <option value="30" selected>Next 30 Days</option>
+                            <option value="60">Next 60 Days</option>
+                        </select>
+                    </div>
+                    <div class="input-group">
+                        <label for="model-type">Model</label>
+                        <select id="model-type" name="model-type">
+                            <option value="lstm" selected>LSTM (Neural Network)</option>
+                            <option value="random_forest">Random Forest</option>
+                            <option value="svr">Support Vector Regression (SVR)</option>
+                            <option value="gradient_boosting">Gradient Boosting</option>
+                            <option value="all">Compare All Models</option>
+                        </select>
+                    </div>
+                    <div class="input-group">
+                        <label for="period">Chart History</label>
+                        <select id="period" name="period">
+                            <option value="1mo">1 Month</option>
+                            <option value="2mo">2 Months</option>
+                            <option value="3mo">3 Months</option>
+                            <option value="6mo">6 Months</option>
+                            <option value="9mo">9 Months</option>
+                            <option value="1y">1 Year</option>
+                            <option value="2y" selected>2 Years</option>
+                            <option value="5y">5 Years</option>
+                            <option value="max">Max</option>
+                        </select>
+                    </div>
+                    <div class="input-group">
+                        <label>Simulation Model</label>
+                        <select id="simulation-method">
+                            <optgroup label="Continuous-Time Stochastic">
+                                <option value="gbm" selected>Geometric Brownian Motion (GBM)</option>
+                                <option value="jump_diffusion">Merton Jump-Diffusion</option>
+                                <option value="heston">Heston Stochastic Volatility</option>
+                                <option value="variance_gamma">Variance Gamma</option>
+                                <option value="cev">CEV Model</option>
+                                <option value="ou">Ornstein-Uhlenbeck</option>
+                                <option value="cir">Cox-Ingersoll-Ross (CIR)</option>
+                                <option value="sabr">SABR Model</option>
+                                <option value="local_vol">Local Volatility</option>
+                                <option value="levy">Lévy Process</option>
+                                <option value="bates">Bates Model</option>
+                                <option value="double_exp">Double Exponential Jump</option>
+                                <option value="kou">Kou's Jump-Diffusion</option>
+                            </optgroup>
+                            <optgroup label="Discrete-Time">
+                                <option value="arima">ARIMA</option>
+                                <option value="arma">ARMA</option>
+                                <option value="garch">GARCH</option>
+                                <option value="egarch">EGARCH</option>
+                                <option value="gjr_garch">GJR-GARCH</option>
+                            </optgroup>
+                            <optgroup label="Regime-Switching">
+                                <option value="markov_switching">Markov-Switching</option>
+                                <option value="hmm">Hidden Markov Models</option>
+                            </optgroup>
+                            <optgroup label="Machine Learning">
+                                <option value="lstm_mc">LSTM (Monte Carlo Dropout)</option>
+                                <option value="rf_mc">Random Forest</option>
+                                <option value="xgboost_mc">XGBoost/Gradient Boosting</option>
+                            </optgroup>
+                            <optgroup label="Simulation Techniques">
+                                <option value="bootstrapping">Bootstrapping (Historical)</option>
+                                <option value="mcmc">Markov Chain Monte Carlo</option>
+                            </optgroup>
+                            <optgroup label="Other">
+                                <option value="vasicek">Vasicek (Interest Rate)</option>
+                                <option value="hull_white">Hull-White</option>
+                                <option value="chaos">Chaos Theory</option>
+                            </optgroup>
+                        </select>
+                    </div>
+                    <div class="input-group">
+                        <label>&nbsp;</label>
+                        <button type="button" id="simulate-btn" class="simulation-btn">Simulate</button>
+                    </div>
+                    <div class="button-group" style="grid-column: span 4; display: flex; gap: 1rem;">
+                        <button type="submit" id="predict-btn">
+                            <span class="btn-text">Generate Prediction</span>
+                            <div class="loader" id="btn-loader"></div>
+                        </button>
+                        <button type="button" id="backtest-btn" class="secondary-btn">
+                            <span class="btn-text">Run Backtest</span>
+                            <div class="loader" id="backtest-loader"></div>
+                        </button>
+                    </div>
+                </form>
+            </section>
+
+            <section id="results-section" class="hidden">
+                <div class="metrics-grid">
+                    <div class="metric-card">
+                        <h3>Current Price</h3>
+                        <p class="metric-value" id="current-price">--</p>
+                    </div>
+                    <div class="metric-card">
+                        <h3>Model Loss (MSE)</h3>
+                        <p class="metric-value" id="model-loss">--</p>
+                    </div>
+                    <div class="metric-card">
+                        <h3>Prediction Trend</h3>
+                        <p class="metric-value" id="prediction-trend">--</p>
+                    </div>
+                </div>
+
+                <div class="chart-container">
+                    <canvas id="predictionChart"></canvas>
+                </div>
+
+                <div class="chart-container" style="margin-top: 2rem;">
+                    <h3 id="distribution-title" style="color: var(--text-primary); margin-bottom: 1rem;">Price
+                        Distribution (Monte Carlo)</h3>
+                    <canvas id="distributionChart"></canvas>
+                </div>
+            </section>
+
+            <section id="backtest-section" class="hidden" style="margin-top: 2rem;">
+                <h2>Backtest Results (Model Accuracy)</h2>
+                <div class="metrics-grid" id="backtest-metrics">
+                    <!-- Metrics injected here -->
+                </div>
+                <div class="chart-container">
+                    <canvas id="backtestChart"></canvas>
+                </div>
+            </section>
+        </main>
+    </div>
+    <script src="/static/app.js"></script>
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/sw.js')
+                    .then(registration => console.log('SW registered'))
+                    .catch(err => console.log('SW registration failed: ', err));
+            });
+        }
+    </script>
+</body>
+
+</html>
