@@ -61,9 +61,12 @@ async def predict(request: PredictionRequest):
         # 2. Train Models to run
         models_to_run = []
         if request.model_type == "all":
-            models_to_run = ["lstm", "random_forest", "svr", "gradient_boosting", "monte_carlo"]
+            models_to_run = ["random_forest", "svr", "gradient_boosting", "monte_carlo"]
         else:
-            models_to_run = [request.model_type]
+            if request.model_type == "lstm":
+                 models_to_run = ["random_forest"] # Fallback
+            else:
+                 models_to_run = [request.model_type]
             
         if request.run_simulation:
             if "monte_carlo" not in models_to_run:
@@ -180,9 +183,12 @@ async def backtest(request: PredictionRequest):
         
         models_to_test = []
         if request.model_type == "all":
-            models_to_test = ["lstm", "random_forest", "svr", "gradient_boosting", "monte_carlo"]
+            models_to_test = ["random_forest", "svr", "gradient_boosting", "monte_carlo"]
         else:
-            models_to_test = [request.model_type]
+            if request.model_type == "lstm":
+                models_to_test = ["random_forest"] # Fallback
+            else:
+                models_to_test = [request.model_type]
             
         results = []
         

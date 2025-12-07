@@ -1,16 +1,23 @@
-const CACHE_NAME = 'stonks-daily-v1';
+const CACHE_NAME = 'stonks-daily-v11';
 const urlsToCache = [
     '/',
-    '/static/style.css',
-    '/static/app.js',
+    '/static/style.css?v=6',
+    '/static/app.js?v=7',
     '/static/manifest.json'
 ];
 
 self.addEventListener('install', event => {
+    // Force new service worker to activate immediately
+    self.skipWaiting();
     event.waitUntil(
         caches.open(CACHE_NAME)
             .then(cache => cache.addAll(urlsToCache))
     );
+});
+
+self.addEventListener('activate', event => {
+    // Claim clients immediately so the new SW controls the page
+    event.waitUntil(clients.claim());
 });
 
 self.addEventListener('fetch', event => {

@@ -65,6 +65,12 @@ document.getElementById('backtest-btn').addEventListener('click', async () => {
     backtestSection.classList.add('hidden');
     btn.classList.add('loading');
     btn.disabled = true;
+    // const originalText = btn.querySelector('.btn-text').textContent; // No longer needed
+    // btn.querySelector('.btn-text').textContent = 'Running...'; // Removed per user request
+
+    // Timeout safeguard
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 60000); // 60 second timeout
 
     try {
         const response = await fetch('/backtest', {
@@ -76,20 +82,33 @@ document.getElementById('backtest-btn').addEventListener('click', async () => {
                 ticker: ticker,
                 model_type: modelType,
                 period: period // Added period to body
-            })
+            }),
+            signal: controller.signal
         });
 
+        clearTimeout(timeoutId);
+
         if (!response.ok) {
-            throw new Error('Backtest failed');
+            const errorText = await response.text();
+            throw new Error(`Server Error: ${response.status} - ${errorText}`);
         }
 
         const data = await response.json();
+
+        if (!data.results || data.results.length === 0) {
+            throw new Error('No backtest results returned from server.');
+        }
+
         renderBacktestResults(data);
         backtestSection.classList.remove('hidden');
 
     } catch (error) {
         console.error('Error:', error);
-        alert('Failed to run backtest. Please try again.');
+        if (error.name === 'AbortError') {
+            alert('Backtest timed out. Try a shorter time period or fewer models.');
+        } else {
+            alert(`Failed to run backtest: ${error.message}`);
+        }
     } finally {
         btn.classList.remove('loading');
         btn.disabled = false;
@@ -135,6 +154,7 @@ document.getElementById('simulate-btn').addEventListener('click', async () => {
     } finally {
         btn.classList.remove('loading');
         btn.disabled = false;
+        // Text no longer changes, so no need to revert
     }
 });
 
@@ -160,6 +180,10 @@ function renderResults(data) {
 
     // Render Chart
     initializeChart(data.historical, data.results);
+
+    // Hide Distribution Chart for standard predictions
+    document.getElementById('distribution-title').style.display = 'none';
+    document.getElementById('distributionChart').parentElement.style.display = 'none';
 }
 
 function initializeChart(historicalDataRaw, results = []) {
@@ -409,9 +433,15 @@ function renderBacktestResults(data) {
     });
 }
 
-function renderSimulationResults(data, simulationMethod = 'gbm') {
-    // Show results section if hidden
-    document.getElementById('results-section').classList.remove('hidden');
+function renderSimulationResults(data, simulationMethod) {
+    const resultsSection = document.getElementById('results-section');
+    resultsSection.classList.remove('hidden');
+
+    // Show Distribution Chart for simulations
+    document.getElementById('distribution-title').style.display = 'block';
+    document.getElementById('distributionChart').parentElement.style.display = 'block';
+
+    // Update Metrics
     document.getElementById('current-price').textContent = formatCurrency(data.current_price);
 
     // Initialize chart if needed
@@ -559,6 +589,17 @@ function renderDistributionChart(distribution) {
                     ticks: { color: '#9ca3af', font: { family: "'Outfit', sans-serif" } }
                 }
             }
+        }
+    });
+}
+
+// Force Service Worker Unregistration to clear cache
+if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.getRegistrations().then(function (registrations) {
+        for (let registration of registrations) {
+            registration.unregister().then(function (boolean) {
+                console.log('Service Worker unregistered: ', boolean);
+            });
         }
     });
 }

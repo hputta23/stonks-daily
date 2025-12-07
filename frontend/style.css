@@ -109,16 +109,66 @@ h1 {
 }
 
 #prediction-form {
+    display: block;
+    /* Removed grid to allow explicit rows */
+}
+
+.form-row {
     display: grid;
-    grid-template-columns: 1fr 1fr 1fr auto;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
     gap: 1.5rem;
     align-items: end;
+    margin-bottom: 1.5rem;
+    padding-bottom: 1.5rem;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.form-row:last-child {
+    border-bottom: none;
+    margin-bottom: 0;
+    padding-bottom: 0;
 }
 
 .input-group {
     display: flex;
     flex-direction: column;
     gap: 0.5rem;
+    position: relative;
+    /* Needed for tooltip positioning */
+}
+
+/* Tooltip Styles */
+.input-group[data-tooltip]:hover::after {
+    content: attr(data-tooltip);
+    position: absolute;
+    bottom: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    margin-bottom: 8px;
+    padding: 0.5rem 0.75rem;
+    background-color: #1f2937;
+    color: #f3f4f6;
+    font-size: 0.85rem;
+    border-radius: 6px;
+    white-space: nowrap;
+    z-index: 1000;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+    pointer-events: none;
+    opacity: 0;
+    animation: fadeIn 0.2s ease-out forwards;
+    border: 1px solid #374151;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translate(-50%, 5px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translate(-50%, 0);
+    }
 }
 
 label {
@@ -322,11 +372,7 @@ button.loading .loader {
     }
 
     /* Ensure button group (Generate Prediction) stacks if needed or stays full width */
-    .button-group {
-        grid-column: span 1 !important;
-        /* Override the span 4 */
-        flex-direction: column;
-    }
+    /* Removed button-group override as direct buttons are used now */
 
     .metrics-grid {
         grid-template-columns: 1fr;

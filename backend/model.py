@@ -1,17 +1,16 @@
 import numpy as np
 import pandas as pd
-import tensorflow as tf
-from sklearn.preprocessing import MinMaxScaler
-from sklearn.preprocessing import MinMaxScaler
-from sklearn.ensemble import RandomForestRegressor, GradientBoostingRegressor
-from sklearn.svm import SVR
-from sklearn.model_selection import RandomizedSearchCV
-from tensorflow.keras.models import Sequential
-from tensorflow.keras.layers import LSTM, Dense, Dropout
+# import tensorflow as tf
+# from tensorflow.keras.models import Sequential
+# from tensorflow.keras.layers import LSTM, Dense, Dropout
 import datetime
 from abc import ABC, abstractmethod
 
 from sklearn.metrics import mean_absolute_error, mean_squared_error
+from sklearn.preprocessing import MinMaxScaler
+from sklearn.ensemble import RandomForestRegressor, GradientBoostingRegressor
+from sklearn.svm import SVR
+from sklearn.model_selection import RandomizedSearchCV
 import math
 from scipy.stats import norm
 
@@ -49,10 +48,10 @@ class BasePredictor(ABC):
         # The prepare_data methods usually return X, y for the whole input.
         # So let's prepare for the WHOLE data, then slice the test part.
         
-        if isinstance(self, LSTMPredictor):
-            X, y, scaled_data = self.prepare_data_lstm(data)
-        else:
-            X, y, scaled_data = self.prepare_data_sklearn(data)
+        # if isinstance(self, LSTMPredictor):
+        #     X, y, scaled_data = self.prepare_data_lstm(data)
+        # else:
+        X, y, scaled_data = self.prepare_data_sklearn(data)
             
         # The 'y' array corresponds to data[look_back:].
         # We need to find the index in 'y' that corresponds to the start of test_data.
@@ -72,11 +71,11 @@ class BasePredictor(ABC):
         y_test = y[test_start_idx:]
         
         # 4. Predict
-        if isinstance(self, LSTMPredictor):
-            predictions = self.model.predict(X_test, verbose=0)
-        else:
-            predictions = self.model.predict(X_test)
-            predictions = predictions.reshape(-1, 1)
+        # if isinstance(self, LSTMPredictor):
+        #     predictions = self.model.predict(X_test, verbose=0)
+        # else:
+        predictions = self.model.predict(X_test)
+        predictions = predictions.reshape(-1, 1)
             
         # 5. Inverse Transform
         # We only need to inverse transform the Close price (index 0)
@@ -140,18 +139,18 @@ class BasePredictor(ABC):
             
         return np.array(x_train), np.array(y_train), scaled_data
 
-class LSTMPredictor(BasePredictor):
-    def build_model(self, input_shape):
-        model = Sequential()
-        model.add(LSTM(units=50, return_sequences=True, input_shape=input_shape))
-        model.add(Dropout(0.2))
-        model.add(LSTM(units=50, return_sequences=False))
-        model.add(Dropout(0.2))
-        model.add(Dense(units=25))
-        model.add(Dense(units=1))
-        
-        model.compile(optimizer='adam', loss='mean_squared_error')
-        self.model = model
+# class LSTMPredictor(BasePredictor):
+#     def build_model(self, input_shape):
+#         model = Sequential()
+#         model.add(LSTM(units=50, return_sequences=True, input_shape=input_shape))
+#         model.add(Dropout(0.2))
+#         model.add(LSTM(units=50, return_sequences=False))
+#         model.add(Dropout(0.2))
+#         model.add(Dense(units=25))
+#         model.add(Dense(units=1))
+#         
+#         model.compile(optimizer='adam', loss='mean_squared_error')
+#         self.model = model
         
     def train(self, data, epochs=25, batch_size=32):
         x_train, y_train, scaled_data = self.prepare_data_lstm(data)
@@ -777,7 +776,8 @@ class MonteCarloPredictor(BasePredictor):
 
 def get_predictor(model_type: str):
     if model_type == "lstm":
-        return LSTMPredictor()
+        # return LSTMPredictor()
+        raise ValueError("LSTM Disabled for Free Tier (Memory Optimization)")
     elif model_type == "random_forest":
         return RandomForestPredictor()
     elif model_type == "svr":
