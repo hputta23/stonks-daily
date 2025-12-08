@@ -111,10 +111,22 @@ async def predict(request: PredictionRequest):
         # Convert timestamps to ISO strings
         historical_data = []
         for index, row in data.iterrows():
-            historical_data.append({
+            item = {
                 "date": row['Date'].isoformat(),
-                "price": float(row['Close'])
-            })
+                "open": float(row['Open']),
+                "high": float(row['High']),
+                "low": float(row['Low']),
+                "close": float(row['Close']),
+                "volume": float(row['Volume']),
+                "sma_20": float(row['SMA_20']),
+                "sma_50": float(row['SMA_50']),
+                "rsi": float(row['RSI']),
+                "macd": float(row['MACD']),
+                "signal_line": float(row['Signal_Line']),
+                "upper_band": float(row['Upper_Band']),
+                "lower_band": float(row['Lower_Band'])
+            }
+            historical_data.append(item)
             
         current_price = get_current_price(request.ticker)
         
@@ -149,10 +161,22 @@ async def simulate(request: PredictionRequest):
         # Prepare historical data for chart
         historical_data = []
         for index, row in data.iterrows():
-            historical_data.append({
+            item = {
                 "date": row['Date'].isoformat(),
-                "price": float(row['Close'])
-            })
+                "open": float(row['Open']),
+                "high": float(row['High']),
+                "low": float(row['Low']),
+                "close": float(row['Close']),
+                "volume": float(row['Volume']),
+                "sma_20": float(row['SMA_20']),
+                "sma_50": float(row['SMA_50']),
+                "rsi": float(row['RSI']),
+                "macd": float(row['MACD']),
+                "signal_line": float(row['Signal_Line']),
+                "upper_band": float(row['Upper_Band']),
+                "lower_band": float(row['Lower_Band'])
+            }
+            historical_data.append(item)
             
         current_price = get_current_price(request.ticker)
         

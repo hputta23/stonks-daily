@@ -28,8 +28,8 @@ def fetch_stock_data(ticker: str, period: str = "2y"):
         # Reset index to get Date as a column
         hist = hist.reset_index()
         
-        # Keep only Date and Close
-        data = hist[['Date', 'Close']]
+        # Keep relevant columns for visualization and modeling
+        data = hist[['Date', 'Open', 'High', 'Low', 'Close', 'Volume']]
         
         # Ensure Date is timezone naive or consistent
         data['Date'] = pd.to_datetime(data['Date']).dt.tz_localize(None)
