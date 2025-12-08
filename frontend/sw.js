@@ -1,8 +1,8 @@
-const CACHE_NAME = 'stonks-daily-v13';
+const CACHE_NAME = 'stonks-daily-v16';
 const urlsToCache = [
     '/',
     '/static/style.css?v=12',
-    '/static/app.js?v=7',
+    '/static/app.js?v=16',
     '/static/manifest.json'
 ];
 

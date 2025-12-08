@@ -4,7 +4,7 @@ import pandas as pd
 import datetime
 from abc import ABC, abstractmethod
 
-from sklearn.metrics import mean_absolute_error, mean_squared_error
+from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score, mean_absolute_percentage_error
 from sklearn.preprocessing import MinMaxScaler
 from sklearn.ensemble import RandomForestRegressor, GradientBoostingRegressor
 from sklearn.svm import SVR
@@ -89,7 +89,24 @@ class BasePredictor(ABC):
         # 6. Metrics
         mae = mean_absolute_error(y_test_inv, predictions)
         rmse = math.sqrt(mean_squared_error(y_test_inv, predictions))
+        r2 = r2_score(y_test_inv, predictions)
+        mape = mean_absolute_percentage_error(y_test_inv, predictions)
+
+        # Confidence Intervals (95%)
+        # Calculate residuals
+        residuals = y_test_inv - predictions
+        std_dev = np.std(residuals)
+        # 1.96 for 95% confidence
+        confidence_interval = 1.96 * std_dev
         
+        # Feature Importance
+        feature_importance = {}
+        if hasattr(self.model, 'feature_importances_'):
+            # Zip feature names with importance scores
+            feature_importance = dict(zip(self.feature_columns, self.model.feature_importances_))
+            # Sort by importance
+            feature_importance = dict(sorted(feature_importance.items(), key=lambda item: item[1], reverse=True))
+
         # 7. Dates
         # The dates corresponding to y_test are data['Date'].iloc[train_size:]
         dates = data['Date'].iloc[train_size:].values
@@ -98,7 +115,14 @@ class BasePredictor(ABC):
             "dates": dates,
             "actual": y_test_inv.flatten(),
             "predicted": predictions.flatten(),
-            "metrics": {"mae": mae, "rmse": rmse}
+            "metrics": {
+                "mae": mae, 
+                "rmse": rmse,
+                "r2": r2,
+                "mape": mape,
+                "confidence_interval": confidence_interval
+            },
+            "feature_importance": feature_importance
         }
         
     def prepare_data_lstm(self, data):

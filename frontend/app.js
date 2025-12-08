@@ -329,19 +329,55 @@ function initializeChart(historicalDataRaw, results = []) {
     });
 }
 
+// Feature Importance Chart Instance
+let featureImportanceChartInstance = null;
+
 function renderBacktestResults(data) {
     // Render Metrics
     const metricsContainer = document.getElementById('backtest-metrics');
     metricsContainer.innerHTML = '';
 
     data.results.forEach(result => {
+        const metrics = result.metrics;
+        const confidenceMsg = metrics.confidence_interval
+            ? `<p class="metric-sub">± ${formatCurrency(metrics.confidence_interval)} (95% CI)</p>`
+            : '';
+
         const card = document.createElement('div');
         card.className = 'metric-card';
         card.innerHTML = `
-            <h3>${result.model.toUpperCase()} RMSE</h3>
-            <p class="metric-value">${result.metrics.rmse.toFixed(2)}</p>
+            <h3>${result.model.toUpperCase()} Performance</h3>
+            <div class="metric-row">
+                <div>
+                    <span class="metric-label">RMSE</span>
+                    <p class="metric-value">${metrics.rmse.toFixed(2)}</p>
+                </div>
+                <div>
+                    <span class="metric-label">MAE</span>
+                    <p class="metric-value">${metrics.mae.toFixed(2)}</p>
+                </div>
+            </div>
+            <div class="metric-row">
+                <div>
+                    <span class="metric-label">R² Score</span>
+                    <p class="metric-value">${metrics.r2 ? metrics.r2.toFixed(3) : 'N/A'}</p>
+                </div>
+                 <div>
+                    <span class="metric-label">MAPE</span>
+                    <p class="metric-value">${metrics.mape ? (metrics.mape * 100).toFixed(1) + '%' : 'N/A'}</p>
+                </div>
+            </div>
+            ${confidenceMsg}
         `;
         metricsContainer.appendChild(card);
+
+        // Render Feature Importance if available
+        if (result.feature_importance && Object.keys(result.feature_importance).length > 0) {
+            document.getElementById('feature-importance-section').classList.remove('hidden');
+            renderFeatureImportanceChart(result.feature_importance);
+        } else {
+            document.getElementById('feature-importance-section').classList.add('hidden');
+        }
     });
 
     // Render Chart
@@ -351,65 +387,77 @@ function renderBacktestResults(data) {
         backtestChartInstance.destroy();
     }
 
-    // We'll plot Actual vs Predicted for the first result (or all if multiple)
-    // If multiple, we plot one Actual line and multiple Predicted lines
+    // Combine all result predictions
+    // Assuming single model for MVP backtest button, but code supports array
+    const result = data.results[0];
 
-    const datasets = [];
-
-    // Add Actual Data (from the first result, as it's the same for all)
-    const actualData = data.results[0].dates.map((date, i) => ({ x: date, y: data.results[0].actual[i] }));
-
-    datasets.push({
-        label: 'Actual Price',
-        data: actualData,
-        borderColor: '#9ca3af',
-        backgroundColor: 'rgba(156, 163, 175, 0.1)',
-        borderWidth: 2,
-        pointRadius: 0,
-        fill: true,
-        tension: 0.1
-    });
-
-    const modelColors = {
-        'lstm': '#6366f1',
-        'linear': '#10b981',
-        'random_forest': '#f59e0b',
-        'svr': '#ec4899',
-        'gradient_boosting': '#3b82f6',
-        'monte_carlo': '#06b6d4'
-    };
-
-    data.results.forEach(result => {
-        const predictedData = result.dates.map((date, i) => ({ x: date, y: result.predicted[i] }));
-
-        datasets.push({
-            label: `${result.model} Prediction`,
-            data: predictedData,
-            borderColor: modelColors[result.model] || '#ffffff',
-            backgroundColor: 'transparent',
-            borderWidth: 2,
-            pointRadius: 0,
-            borderDash: [2, 2],
-            fill: false,
-            tension: 0.4
-        });
-    });
+    // Prepare Data
+    const labels = result.dates;
+    const actualData = result.actual;
+    const predictedData = result.predicted;
 
     backtestChartInstance = new Chart(ctx, {
         type: 'line',
         data: {
-            datasets: datasets
+            labels: labels,
+            datasets: [
+                {
+                    label: 'Actual Price',
+                    data: actualData,
+                    borderColor: '#9ca3af',
+                    backgroundColor: 'transparent',
+                    borderWidth: 2,
+                    pointRadius: 0,
+                    tension: 0.1
+                },
+                {
+                    label: 'Predicted Price',
+                    data: predictedData,
+                    borderColor: '#6366f1', // Indigo
+                    backgroundColor: 'rgba(99, 102, 241, 0.1)',
+                    borderWidth: 2,
+                    pointRadius: 0,
+                    tension: 0.1
+                }
+            ]
         },
         options: {
             responsive: true,
             maintainAspectRatio: false,
             interaction: {
-                intersect: false,
                 mode: 'index',
+                intersect: false,
             },
             plugins: {
+                tooltip: {
+                    backgroundColor: '#181b21',
+                    titleColor: '#fff',
+                    bodyColor: '#9ca3af',
+                    borderColor: '#2d3139',
+                    borderWidth: 1,
+                    padding: 10,
+                    displayColors: true,
+                    callbacks: {
+                        label: function (context) {
+                            let label = context.dataset.label || '';
+                            if (label) {
+                                label += ': ';
+                            }
+                            if (context.parsed.y !== null) {
+                                label += new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(context.parsed.y);
+                            }
+                            return label;
+                        }
+                    }
+                },
                 legend: {
-                    labels: { color: '#9ca3af' }
+                    display: true, // Show legend
+                    labels: {
+                        color: '#e5e7eb',
+                        font: {
+                            family: "'Outfit', sans-serif"
+                        }
+                    }
                 },
                 title: {
                     display: true,
@@ -426,7 +474,51 @@ function renderBacktestResults(data) {
                 },
                 y: {
                     grid: { color: '#2d3139' },
+                    ticks: { color: '#9ca3af', callback: (val) => '$' + val }
+                }
+            }
+        }
+    });
+}
+
+function renderFeatureImportanceChart(featureImportance) {
+    const ctx = document.getElementById('featureImportanceChart').getContext('2d');
+
+    if (featureImportanceChartInstance) {
+        featureImportanceChartInstance.destroy();
+    }
+
+    const labels = Object.keys(featureImportance);
+    const data = Object.values(featureImportance);
+
+    featureImportanceChartInstance = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: labels,
+            datasets: [{
+                label: 'Importance Score',
+                data: data,
+                backgroundColor: 'rgba(99, 102, 241, 0.8)', // Indigo
+                borderColor: '#6366f1',
+                borderWidth: 1
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            indexAxis: 'y', // Horizontal Bar Chart
+            plugins: {
+                legend: { display: false },
+                title: { display: false }
+            },
+            scales: {
+                x: {
+                    grid: { color: '#2d3139' },
                     ticks: { color: '#9ca3af' }
+                },
+                y: {
+                    grid: { display: false },
+                    ticks: { color: '#e5e7eb', font: { size: 12 } }
                 }
             }
         }

@@ -134,18 +134,26 @@
                 </div>
             </section>
 
-            <section id="backtest-section" class="hidden">
-                <h2>Backtest Results (Test Set)</h2>
-                <div class="metrics-grid" id="backtest-metrics">
+            <div id="backtest-section" class="hidden">
+                <h2>Backtest Results</h2>
+                <div id="backtest-metrics" class="metrics-grid">
                     <!-- Metrics injected here -->
                 </div>
                 <div class="chart-container">
                     <canvas id="backtestChart"></canvas>
                 </div>
-            </section>
+
+                <!-- Feature Importance Section -->
+                <div id="feature-importance-section" class="hidden" style="margin-top: 2rem;">
+                    <h3>Model Feature Importance</h3>
+                    <div class="chart-container">
+                        <canvas id="featureImportanceChart"></canvas>
+                    </div>
+                </div>
+            </div>
         </main>
     </div>
-    <script src="/static/app.js?v=7"></script>
+    <script src="/static/app.js?v=16"></script>
     <script>
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
