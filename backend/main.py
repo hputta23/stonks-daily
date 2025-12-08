@@ -10,8 +10,17 @@ from .data_service import fetch_stock_data, get_current_price
 from .model import get_predictor
 import traceback
 import os
+import datetime
 
 app = FastAPI()
+
+@app.get("/health")
+async def health_check():
+    return {
+        "status": "online",
+        "timestamp": datetime.datetime.now().isoformat(),
+        "service": "stonks-daily"
+    }
 
 # Mount static files
 # Get absolute path to frontend directory
