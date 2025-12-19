@@ -54,6 +54,7 @@ class PredictionRequest(BaseModel):
     period: str = "2y"
     run_simulation: bool = False
     simulation_method: str = "gbm"
+    api_source: str = "yahoo"
 
 
 
@@ -61,11 +62,38 @@ class PredictionRequest(BaseModel):
 async def read_root():
     return FileResponse(os.path.join(frontend_dir, 'index.html'))
 
+class HistoryRequest(BaseModel):
+    ticker: str
+    period: str = "2y"
+    api_source: str = "yahoo"
+
+@app.post("/history")
+async def get_history(request: HistoryRequest):
+    try:
+        data = fetch_stock_data(request.ticker, period=request.period, api_source=request.api_source)
+        
+        # Minimize payload, we only need date and close for comparison
+        historical_data = []
+        for index, row in data.iterrows():
+            historical_data.append({
+                "date": row['Date'].isoformat(),
+                "close": float(row['Close'])
+            })
+            
+        return {
+            "ticker": request.ticker,
+            "period": request.period,
+            "history": historical_data
+        }
+    except Exception as e:
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=str(e))
+
 @app.post("/predict")
 async def predict(request: PredictionRequest):
     try:
         # 1. Fetch Data
-        data = fetch_stock_data(request.ticker, period=request.period)
+        data = fetch_stock_data(request.ticker, period=request.period, api_source=request.api_source)
         
         # 2. Train Models to run
         models_to_run = []
@@ -145,7 +173,7 @@ async def predict(request: PredictionRequest):
 async def simulate(request: PredictionRequest):
     try:
         # 1. Fetch Data
-        data = fetch_stock_data(request.ticker, period=request.period)
+        data = fetch_stock_data(request.ticker, period=request.period, api_source=request.api_source)
         
         # 2. Get Monte Carlo Predictor
         predictor = get_predictor("monte_carlo")

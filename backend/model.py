@@ -93,22 +93,53 @@ class BasePredictor(ABC):
         mape = mean_absolute_percentage_error(y_test_inv, predictions)
 
         # Confidence Intervals (95%)
-        # Calculate residuals
         residuals = y_test_inv - predictions
         std_dev = np.std(residuals)
-        # 1.96 for 95% confidence
         confidence_interval = 1.96 * std_dev
+        
+        # Risk Metrics (Forecast vs Actual Analysis)
+        def calculate_risk_metrics(prices):
+            if len(prices) < 2:
+                return {}
+            
+            # Daily Returns
+            returns = np.diff(prices) / prices[:-1]
+            
+            # Annualized Volatility
+            volatility = np.std(returns) * np.sqrt(252)
+            
+            # Sharpe Ratio (assuming 0% risk free for simplicity)
+            mean_return = np.mean(returns)
+            std_return = np.std(returns)
+            sharpe_ratio = (mean_return / std_return) * np.sqrt(252) if std_return > 0 else 0
+            
+            # VaR (95% Parametric)
+            var_95 = norm.ppf(0.05, mean_return, std_return)
+            
+            # Max Drawdown
+            cum_returns = np.cumprod(1 + returns)
+            peak = np.maximum.accumulate(cum_returns)
+            drawdown = (cum_returns - peak) / peak
+            max_drawdown = np.min(drawdown)
+            
+            return {
+                "volatility": volatility,
+                "sharpe": sharpe_ratio,
+                "var_95": var_95,
+                "max_drawdown": max_drawdown
+            }
+            
+        predicted_risk = calculate_risk_metrics(predictions)
+        # We can also return 'actual' risk metrics if useful for comparison, 
+        # but 'predicted_risk' is what characterizes the forecast's nature.
         
         # Feature Importance
         feature_importance = {}
         if hasattr(self.model, 'feature_importances_'):
-            # Zip feature names with importance scores
             feature_importance = dict(zip(self.feature_columns, self.model.feature_importances_))
-            # Sort by importance
             feature_importance = dict(sorted(feature_importance.items(), key=lambda item: item[1], reverse=True))
 
         # 7. Dates
-        # The dates corresponding to y_test are data['Date'].iloc[train_size:]
         dates = data['Date'].iloc[train_size:].values
         
         return {
@@ -120,7 +151,11 @@ class BasePredictor(ABC):
                 "rmse": rmse,
                 "r2": r2,
                 "mape": mape,
-                "confidence_interval": confidence_interval
+                "confidence_interval": confidence_interval,
+                "volatility": predicted_risk.get("volatility", 0),
+                "sharpe": predicted_risk.get("sharpe", 0),
+                "var_95": predicted_risk.get("var_95", 0),
+                "max_drawdown": predicted_risk.get("max_drawdown", 0)
             },
             "feature_importance": feature_importance
         }
@@ -161,117 +196,187 @@ class BasePredictor(ABC):
             
         return np.array(x_train), np.array(y_train), scaled_data
 
-# class LSTMPredictor(BasePredictor):
-#     def build_model(self, input_shape):
-#         model = Sequential()
-#         model.add(LSTM(units=50, return_sequences=True, input_shape=input_shape))
-#         model.add(Dropout(0.2))
-#         model.add(LSTM(units=50, return_sequences=False))
-#         model.add(Dropout(0.2))
-#         model.add(Dense(units=25))
-#         model.add(Dense(units=1))
-#         
-#         model.compile(optimizer='adam', loss='mean_squared_error')
-#         self.model = model
+import os
+# Suppress TensorFlow logs
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
+from tensorflow.keras.models import Sequential
+from tensorflow.keras.layers import LSTM, Dense, Dropout, Input
+
+class LSTMPredictor(BasePredictor):
+    def build_model(self, input_shape):
+        model = Sequential()
+        model.add(Input(shape=input_shape))
+        # Lightweight LSTM for memory efficiency
+        model.add(LSTM(units=32, return_sequences=True)) # reduced from 50
+        model.add(Dropout(0.2))
+        model.add(LSTM(units=16, return_sequences=False)) # reduced from 50
+        model.add(Dropout(0.2))
+        model.add(Dense(units=16))
+        model.add(Dense(units=1))
         
-    def train(self, data, epochs=25, batch_size=32):
+        model.compile(optimizer='adam', loss='mean_squared_error')
+        self.model = model
+        
+    def train(self, data, epochs=15, batch_size=32): # reduced epochs
         x_train, y_train, scaled_data = self.prepare_data_lstm(data)
         
         if self.model is None:
             self.build_model((x_train.shape[1], x_train.shape[2]))
             
-        history = self.model.fit(x_train, y_train, batch_size=batch_size, epochs=epochs, verbose=1)
+        history = self.model.fit(x_train, y_train, batch_size=batch_size, epochs=epochs, verbose=0)
         return history, scaled_data
 
     def predict_future(self, data, days=30):
-        # Note: For accurate multivariate prediction, we need to update ALL features for each step.
-        # This is complex because features like SMA/RSI depend on history.
-        # Simplified approach for MVP: 
-        # We will predict 'Close', append it, and re-calculate indicators on the fly?
-        # Or simpler: Assume other features stay constant? No, that's bad.
-        # Better: Re-calculate indicators.
-        
-        # 1. Get full data with indicators
+        # Multivariate prediction logic (similar to RF but using 3D input)
         current_df = data.copy()
-        
         future_dates = []
         predicted_prices = []
-        
         last_date = current_df['Date'].iloc[-1]
         
         for i in range(days):
-            # Prepare data for current prediction
-            # We need the last 'look_back' rows
-            # Scale the entire current_df (inefficient but safe for correctness)
             dataset = current_df[self.feature_columns].values
             scaled_data = self.scaler.transform(dataset)
             
-            # Get last window
+            # Get last window (3D for LSTM)
             current_batch = scaled_data[-self.look_back:].reshape(1, self.look_back, len(self.feature_columns))
             
-            # Predict next Close
+            # Predict
             pred_scaled = self.model.predict(current_batch, verbose=0)[0][0]
             
-            # Inverse transform prediction (we need to inverse just the Close column)
-            # Create a dummy row with same shape as features to inverse transform
+            # Inverse transform
             dummy_row = np.zeros((1, len(self.feature_columns)))
             dummy_row[0, 0] = pred_scaled
             pred_price = self.scaler.inverse_transform(dummy_row)[0, 0]
             
             predicted_prices.append(pred_price)
             
-            # Next Date
+            # Next Date & Update DF
             next_date = last_date + datetime.timedelta(days=1)
             future_dates.append(next_date)
             last_date = next_date
             
-            # Append new row to current_df to update indicators
             new_row = {'Date': next_date, 'Close': pred_price}
-            # We need to calculate other columns? 
-            # Actually, if we append Close, we can re-calculate indicators for the last row.
-            # But re-calculating on growing DF is slow.
-            # Optimization: Just calculate for the new row based on history.
-            
-            # Let's just append Close and re-calc indicators for the whole DF (or last window)
-            # For 30 days, re-calcing on ~2yr data 30 times is fine (ms).
-            
             new_df_row = pd.DataFrame([new_row])
             current_df = pd.concat([current_df, new_df_row], ignore_index=True)
             
-            # Re-calculate indicators (we need to import the function or duplicate logic)
-            # Since we can't easily import from data_service here due to circular imports if not careful,
-            # let's assume we can use a helper or just do it here.
-            # Actually, `data` passed to this method already has indicators. 
-            # We just need to update them.
-            
-            # SMA
-            current_df['SMA_20'] = current_df['Close'].rolling(window=20).mean()
-            current_df['SMA_50'] = current_df['Close'].rolling(window=50).mean()
-            
-            # EMA
-            current_df['EMA_12'] = current_df['Close'].ewm(span=12, adjust=False).mean()
-            current_df['EMA_26'] = current_df['Close'].ewm(span=26, adjust=False).mean()
-            
-            # RSI
-            delta = current_df['Close'].diff()
-            gain = (delta.where(delta > 0, 0)).rolling(window=14).mean()
-            loss = (-delta.where(delta < 0, 0)).rolling(window=14).mean()
-            rs = gain / loss
-            current_df['RSI'] = 100 - (100 / (1 + rs))
-            
-            # MACD
-            current_df['MACD'] = current_df['EMA_12'] - current_df['EMA_26']
-            current_df['Signal_Line'] = current_df['MACD'].ewm(span=9, adjust=False).mean()
-            
-            # Bollinger Bands
-            std_dev = current_df['Close'].rolling(window=20).std()
-            current_df['Upper_Band'] = current_df['SMA_20'] + (std_dev * 2)
-            current_df['Lower_Band'] = current_df['SMA_20'] - (std_dev * 2)
-            
-            # Fill NaNs (important for the newly added row if window not full, but it should be)
+            # Re-calc indicators (Simplified for brevity, assumes minimal drift in 1 step)
+            # Ideally should duplicate logic from BasePredictor's other implementations
+            # reusing code:
+            self._update_indicators(current_df)
             current_df = current_df.fillna(method='ffill')
-
+            
         return future_dates, np.array(predicted_prices)
+
+    def _update_indicators(self, df):
+        # Helper to update indicators on the growing dataframe
+        df['SMA_20'] = df['Close'].rolling(window=20).mean()
+        df['SMA_50'] = df['Close'].rolling(window=50).mean()
+        df['EMA_12'] = df['Close'].ewm(span=12, adjust=False).mean()
+        df['EMA_26'] = df['Close'].ewm(span=26, adjust=False).mean()
+        
+        delta = df['Close'].diff()
+        gain = (delta.where(delta > 0, 0)).rolling(window=14).mean()
+        loss = (-delta.where(delta < 0, 0)).rolling(window=14).mean()
+        # Avoid division by zero
+        loss = loss.replace(0, 0.001)
+        rs = gain / loss
+        df['RSI'] = 100 - (100 / (1 + rs))
+        
+        df['MACD'] = df['EMA_12'] - df['EMA_26']
+        df['Signal_Line'] = df['MACD'].ewm(span=9, adjust=False).mean()
+        
+        std_dev = df['Close'].rolling(window=20).std()
+        df['Upper_Band'] = df['SMA_20'] + (std_dev * 2)
+        df['Lower_Band'] = df['SMA_20'] - (std_dev * 2)
+
+class EnsemblePredictor(BasePredictor):
+    def __init__(self, look_back=60):
+        super().__init__(look_back)
+        self.models = [
+            RandomForestPredictor(look_back),
+            GradientBoostingPredictor(look_back)
+        ]
+        
+    def train(self, data, epochs=None, batch_size=None):
+        for model in self.models:
+            model.train(data, epochs, batch_size)
+        
+        class History:
+            history = {'loss': [0]}
+        return History(), None # Logic handled in sub-models
+
+    def predict_future(self, data, days=30):
+        # Gather predictions from all models
+        all_preds = []
+        future_dates = []
+        for model in self.models:
+            dates, preds = model.predict_future(data, days)
+            all_preds.append(preds)
+            future_dates = dates 
+        
+        # Average them
+        avg_preds = np.mean(all_preds, axis=0)
+        return future_dates, avg_preds
+        
+    def backtest(self, data, split_ratio=0.8):
+        # Custom backtest for ensemble: average the backtest results of sub-models?
+        # Or train and predict as a unit.
+        # Let's train and predict as a unit using base implementation but overriding predict logic.
+        # Actually base backtest calls 'train' then 'model.predict'.
+        # Our 'model' attribute is None.
+        # So we should override backtest to delegate properly or set a dummy model.
+        # Simpler: Override backtest to run backtest on each submodel and average the 'predicted' array?
+        # Yes, that's robust.
+        
+        results = []
+        for model in self.models:
+            res = model.backtest(data, split_ratio)
+            results.append(res)
+            
+        # Combine
+        dates = results[0]['dates']
+        actual = results[0]['actual']
+        
+        # Average predictions
+        preds_stack = np.vstack([r['predicted'] for r in results])
+        avg_pred = np.mean(preds_stack, axis=0)
+        
+        # Recalculate metrics for the average
+        mae = mean_absolute_error(actual, avg_pred)
+        rmse = math.sqrt(mean_squared_error(actual, avg_pred))
+        r2 = r2_score(actual, avg_pred)
+        mape = mean_absolute_percentage_error(actual, avg_pred)
+        
+        # Risk Metrics
+        # Need to import/define helper again or attach to self.
+        # Let's just inline logic for now
+        returns = np.diff(avg_pred) / avg_pred[:-1]
+        volatility = np.std(returns) * np.sqrt(252) if len(returns) > 0 else 0
+        mean_return = np.mean(returns) if len(returns) > 0 else 0
+        std_return = np.std(returns) if len(returns) > 0 else 0
+        sharpe_ratio = (mean_return / std_return) * np.sqrt(252) if std_return > 0 else 0
+        var_95 = norm.ppf(0.05, mean_return, std_return) if std_return > 0 else 0
+        # Drawdown
+        cum_ret = np.cumprod(1 + returns)
+        peak = np.maximum.accumulate(cum_ret)
+        dd = (cum_ret - peak) / peak
+        max_dd = np.min(dd) if len(dd) > 0 else 0
+
+        # Feature Importance (average? specific to tree models)
+        # Just take first model's for now or merge
+        feat_imp = results[0]['feature_importance']
+        
+        return {
+            "dates": dates,
+            "actual": actual,
+            "predicted": avg_pred,
+            "metrics": {
+                "mae": mae, "rmse": rmse, "r2": r2, "mape": mape,
+                "volatility": volatility, "sharpe": sharpe_ratio, "var_95": var_95, "max_drawdown": max_dd
+            },
+            "feature_importance": feat_imp
+        }           
+
 
 
 
@@ -559,12 +664,38 @@ class MonteCarloPredictor(BasePredictor):
         
         mae = mean_absolute_error(actual, predicted)
         rmse = math.sqrt(mean_squared_error(actual, predicted))
+        r2 = r2_score(actual, predicted)
+        mape = mean_absolute_percentage_error(actual, predicted)
         
+        # Risk Metrics for MC (Predicted Path)
+        returns = np.diff(predicted) / predicted[:-1]
+        if len(returns) > 0:
+            volatility = np.std(returns) * np.sqrt(252)
+            mean_return = np.mean(returns)
+            std_return = np.std(returns)
+            sharpe_ratio = (mean_return / std_return) * np.sqrt(252) if std_return > 0 else 0
+            var_95 = norm.ppf(0.05, mean_return, std_return)
+            cum_returns = np.cumprod(1 + returns)
+            peak = np.maximum.accumulate(cum_returns)
+            drawdown = (cum_returns - peak) / peak
+            max_drawdown = np.min(drawdown)
+        else:
+             volatility = sharpe_ratio = var_95 = max_drawdown = 0
+
         return {
             "dates": dates,
             "actual": actual.tolist(),
             "predicted": predicted.tolist(),
-            "metrics": {"mae": mae, "rmse": rmse}
+            "metrics": {
+                "mae": mae, 
+                "rmse": rmse,
+                "r2": r2,
+                "mape": mape,
+                "volatility": volatility,
+                "sharpe": sharpe_ratio,
+                "var_95": var_95,
+                "max_drawdown": max_drawdown
+            }
         }
 
     def predict_future(self, data, days=30):
@@ -798,8 +929,7 @@ class MonteCarloPredictor(BasePredictor):
 
 def get_predictor(model_type: str):
     if model_type == "lstm":
-        # return LSTMPredictor()
-        raise ValueError("LSTM Disabled for Free Tier (Memory Optimization)")
+        return LSTMPredictor()
     elif model_type == "random_forest":
         return RandomForestPredictor()
     elif model_type == "svr":
@@ -808,5 +938,7 @@ def get_predictor(model_type: str):
         return GradientBoostingPredictor()
     elif model_type == "monte_carlo":
         return MonteCarloPredictor()
+    elif model_type == "ensemble":
+        return EnsemblePredictor()
     else:
         raise ValueError(f"Unknown model type: {model_type}")

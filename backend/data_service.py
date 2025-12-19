@@ -2,16 +2,27 @@ import yfinance as yf
 import pandas as pd
 from datetime import datetime, timedelta
 
-def fetch_stock_data(ticker: str, period: str = "2y"):
+def fetch_stock_data(ticker: str, period: str = "2y", api_source: str = "yahoo"):
     """
     Fetches historical stock data for the given ticker.
     Args:
         ticker: Stock symbol (e.g., 'AAPL')
         period: Data period to fetch (default '2y' for sufficient training data)
+        api_source: Data source ('yahoo', 'alpha_vantage', 'mock')
     Returns:
         DataFrame with Date and Close price.
     """
     try:
+        # Mock Data Logic
+        if api_source == "mock":
+            return generate_mock_data(ticker, period)
+            
+        # Fallback / Default to Yahoo Finance
+        if api_source != "yahoo":
+            # For now, we only fully support Yahoo. 
+            # Alpha Vantage would go here.
+            print(f"Warning: API source '{api_source}' not fully implemented. Falling back to Yahoo Finance.")
+        
         stock = yf.Ticker(ticker)
         
         # Enforce minimum period of 6mo for models (need 60 days look_back)
@@ -40,6 +51,29 @@ def fetch_stock_data(ticker: str, period: str = "2y"):
         return data
     except Exception as e:
         raise ValueError(f"Error fetching data for {ticker}: {str(e)}")
+
+def generate_mock_data(ticker, period):
+    import numpy as np
+    # Simple random walk for testing
+    days_map = {"1mo": 30, "3mo": 90, "6mo": 180, "1y": 365, "2y": 730, "5y": 1825, "max": 3000}
+    days = days_map.get(period, 730)
+    
+    dates = pd.date_range(end=datetime.now(), periods=days)
+    base_price = 150.0
+    returns = np.random.normal(0, 0.02, days)
+    prices = base_price * np.exp(np.cumsum(returns))
+    
+    df = pd.DataFrame({
+        'Date': dates,
+        'Open': prices,
+        'High': prices * 1.01,
+        'Low': prices * 0.99,
+        'Close': prices,
+        'Volume': np.random.randint(1000000, 5000000, days)
+    })
+    
+    # Add Technical Indicators
+    return add_technical_indicators(df)
 
 def add_technical_indicators(data):
     """

@@ -4,113 +4,36 @@
 let currentHistoricalData = [];
 let currentResults = [];
 
-// Recent Searches Keys
-const RECENT_SEARCHES_KEY = 'stonks_recent_searches';
-const MAX_RECENT_SEARCHES = 5;
-
-// Toast Notification System
-function showToast(message, type = 'info') {
-    const container = document.getElementById('toast-container');
-    if (!container) return;
-
-    const toast = document.createElement('div');
-    toast.className = `toast ${type}`;
-    toast.innerHTML = `
-        <span>${message}</span>
-        <span style="cursor:pointer; margin-left: 10px;">×</span>
-    `;
-
-    // Close on click
-    toast.querySelector('span:last-child').onclick = () => {
-        toast.classList.add('hiding');
-        setTimeout(() => toast.remove(), 300);
-    };
-
-    container.appendChild(toast);
-
-    // Auto remove after 5s
-    setTimeout(() => {
-        if (toast.parentNode) {
-            toast.classList.add('hiding');
-            setTimeout(() => toast.remove(), 300);
-        }
-    }, 5000);
-}
-
-
-// Animation Helper
-function animateValue(id, start, end, duration, formatter) {
-    const obj = document.getElementById(id);
-    if (!obj) return;
-    let startTimestamp = null;
-    const step = (timestamp) => {
-        if (!startTimestamp) startTimestamp = timestamp;
-        const progress = Math.min((timestamp - startTimestamp) / duration, 1);
-        const value = progress * (end - start) + start;
-        obj.textContent = formatter ? formatter(value) : value.toFixed(2);
-        if (progress < 1) {
-            window.requestAnimationFrame(step);
-        }
-    };
-    window.requestAnimationFrame(step);
-}
-
-
 
 function renderResults(data) {
     // Store global state
     currentHistoricalData = data.historical;
     currentResults = data.results;
 
-    // Animate Current Price
-    animateValue('current-price', 0, data.current_price, 1000, formatCurrency);
+    document.getElementById('current-price').textContent = formatCurrency(data.current_price);
 
     if (data.results.length === 1) {
         const metrics = data.results[0].metrics || {};
-        const loss = metrics.loss !== undefined ? metrics.loss : 0;
-
-        // Animate Loss
-        animateValue('model-loss', 0, loss, 1000, (v) => v.toFixed(5));
+        const loss = metrics.loss !== undefined ? metrics.loss.toFixed(5) : 'N/A';
+        document.getElementById('model-loss').textContent = loss;
 
         const startPrice = data.results[0].predictions[0].price;
         const endPrice = data.results[0].predictions[data.results[0].predictions.length - 1].price;
         const trend = ((endPrice - startPrice) / startPrice) * 100;
         const trendEl = document.getElementById('prediction-trend');
-
-        // Animate Trend
-        // Need custom logic for color/sign
-        let startTimestamp = null;
-        let duration = 1000;
-        const step = (timestamp) => {
-            if (!startTimestamp) startTimestamp = timestamp;
-            const progress = Math.min((timestamp - startTimestamp) / duration, 1);
-            const value = progress * trend;
-            trendEl.textContent = `${value > 0 ? '+' : ''}${value.toFixed(2)}% `;
-            trendEl.style.color = value >= 0 ? 'var(--accent-green)' : 'var(--accent-red)';
-            if (progress < 1) {
-                window.requestAnimationFrame(step);
-            }
-        };
-        window.requestAnimationFrame(step);
-
+        trendEl.textContent = `${trend > 0 ? '+' : ''}${trend.toFixed(2)}% `;
+        trendEl.style.color = trend >= 0 ? 'var(--accent-green)' : 'var(--accent-red)';
     } else {
         document.getElementById('model-loss').textContent = "N/A (Multi)";
         document.getElementById('prediction-trend').textContent = "See Chart";
         document.getElementById('prediction-trend').style.color = 'var(--text-primary)';
     }
 
-
-
     renderInteractiveChart(data.historical, data.results);
 
     // Hide Distribution Chart for standard predictions
     document.getElementById('distribution-title').style.display = 'none';
     document.getElementById('distributionChart').parentElement.style.display = 'none';
-
-    // Auto-scroll to results
-    setTimeout(() => {
-        document.getElementById('results-section').scrollIntoView({ behavior: 'smooth', block: 'start' });
-    }, 100);
 }
 
 function renderInteractiveChart(historical, results = []) {
@@ -122,9 +45,6 @@ function renderInteractiveChart(historical, results = []) {
     const showBollinger = document.getElementById('show-bollinger').checked;
     const showRSI = document.getElementById('show-rsi').checked;
     const showMACD = document.getElementById('show-macd').checked;
-
-    const isComparisonMode = false;
-    const yAxisTitle = 'Price ($)';
 
     const data = [];
     const layout = {
@@ -152,13 +72,13 @@ function renderInteractiveChart(historical, results = []) {
             }
         },
         yaxis: {
-            title: yAxisTitle,
+            title: 'Price ($)',
             gridcolor: '#2d3139',
             fixedrange: false // Allow vertical zoom
         },
         // Grid layout definition (subplots)
         grid: { rows: 1, columns: 1, pattern: 'independent' },
-        margin: { l: 0, r: 0, t: 0, b: 60, pad: 0 },
+        margin: { l: 40, r: 10, t: 20, b: 40, pad: 0 },
         autosize: true
     };
 
@@ -190,25 +110,9 @@ function renderInteractiveChart(historical, results = []) {
     let currentY = 0;
 
     // Base Traces (Price)
-    // CHECK MODE: Absolute ($) or Relative (%)
-    // (Moved to top)
-
-    // Helper to normalize
-    const normalize = (val, base) => ((val - base) / base) * 100;
-
-    // Find common start date? 
-    // Ideally we align dates. Simple approach: Map by date string.
-    // Ensure we only plot intersecting range or full range? 
-    // Let's stick to simple: Plot what we have.
-
     const dates = historical.map(d => d.date);
-    const basePrice = historical[0].close; // Start of period
-
     let priceTrace;
-    // yAxisTitle defined at top
 
-
-    // Standard Absolute Mode
     if (chartType === 'candlestick') {
         priceTrace = {
             x: dates,
@@ -236,7 +140,6 @@ function renderInteractiveChart(historical, results = []) {
     }
     data.push(priceTrace);
 
-
     // Indicators (Overlay)
     if (showSMA) {
         data.push({ x: dates, y: historical.map(d => d.sma_20), type: 'scatter', mode: 'lines', name: 'SMA 20', line: { color: '#fb923c', width: 1 } }); // Orange
@@ -247,54 +150,48 @@ function renderInteractiveChart(historical, results = []) {
     }
     if (showBollinger) {
         data.push({ x: dates, y: historical.map(d => d.upper_band), type: 'scatter', mode: 'lines', name: 'Upper BB', line: { color: 'rgba(255, 255, 255, 0.3)', width: 0 }, showlegend: false });
+        data.push({ x: dates, y: historical.map(d => d.lower_band), type: 'scatter', mode: 'lines', name: 'Bollinger', fill: 'tonexty', fillcolor: 'rgba(255, 255, 255, 0.05)', line: { color: 'rgba(255, 255, 255, 0.3)', width: 0 } });
     }
 
     // Predictions
     const modelColors = { 'lstm': '#6366f1', 'random_forest': '#f59e0b', 'gradient_boosting': '#3b82f6' };
-    try {
-        results.forEach(result => {
-            const predDates = result.predictions.map(d => d.date);
-            let predPrices = result.predictions.map(d => d.price);
+    results.forEach(result => {
+        const predDates = result.predictions.map(d => d.date);
+        const predPrices = result.predictions.map(d => d.price);
 
-            // Connect lines
-            const lastHistDate = dates[dates.length - 1];
-            let lastHistPrice = historical[historical.length - 1].close;
+        // Connect lines
+        const lastHistDate = dates[dates.length - 1];
+        const lastHistPrice = historical[historical.length - 1].close;
 
+        const plotDates = [lastHistDate, ...predDates];
+        const plotPrices = [lastHistPrice, ...predPrices];
 
+        let traceColor = modelColors[result.model] || '#ff00ff';
+        let traceWidth = 2;
+        let traceOpacity = 1.0;
+        let showLegend = true;
+        let hoverInfo = 'y+name';
 
-            const plotDates = [lastHistDate, ...predDates];
-            const plotPrices = [lastHistPrice, ...predPrices];
+        if (result.isSimulation) {
+            traceColor = colors.textSecondary; // or a nice subtle grey/blue
+            traceWidth = 1;
+            traceOpacity = 0.05; // Very transparent
+            showLegend = false;
+            hoverInfo = 'skip';
+        }
 
-            let traceColor = modelColors[result.model] || '#ff00ff';
-            let traceWidth = 2;
-            let traceOpacity = 1.0;
-            let showLegend = true;
-            let hoverInfo = 'y+name';
-
-            if (result.isSimulation) {
-                traceColor = colors.textSecondary; // or a nice subtle grey/blue
-                traceWidth = 1;
-                traceOpacity = 0.05; // Very transparent
-                showLegend = false;
-                hoverInfo = 'skip';
-            }
-
-            data.push({
-                x: plotDates,
-                y: plotPrices,
-                type: 'scatter',
-                mode: 'lines',
-                name: result.isSimulation ? '' : result.model.toUpperCase() + ' Pred',
-                line: { color: traceColor, dash: result.isSimulation ? 'solid' : 'dash', width: traceWidth },
-                opacity: traceOpacity,
-                showlegend: showLegend,
-                hoverinfo: hoverInfo
-            });
+        data.push({
+            x: plotDates,
+            y: plotPrices,
+            type: 'scatter',
+            mode: 'lines',
+            name: result.isSimulation ? '' : result.model.toUpperCase() + ' Pred',
+            line: { color: traceColor, dash: result.isSimulation ? 'solid' : 'dash', width: traceWidth },
+            opacity: traceOpacity,
+            showlegend: showLegend,
+            hoverinfo: hoverInfo
         });
-    } catch (err) {
-        console.error("Error rendering predictions:", err);
-        showToast(`Chart Error: ${err.message}`, 'error');
-    }
+    });
 
     // Subplots Logic
     // Plotly requires layout.yaxis, layout.yaxis2 etc.
@@ -512,11 +409,6 @@ function renderBacktestResults(data) {
     };
 
     Plotly.newPlot('backtestChart', [traceActual, tracePred], layout, { responsive: true, displayModeBar: true });
-
-    // Auto-scroll to backtest results
-    setTimeout(() => {
-        document.getElementById('backtest-section').scrollIntoView({ behavior: 'smooth', block: 'start' });
-    }, 100);
 }
 
 function renderFeatureImportanceChart(featureImportance) {
@@ -541,8 +433,7 @@ function renderFeatureImportanceChart(featureImportance) {
         plot_bgcolor: colors.bg,
         paper_bgcolor: colors.bg,
         font: { color: colors.textSecondary, family: "'Outfit', sans-serif" },
-        margin: { l: 120, r: 0, t: 0, b: 50, pad: 0 },
-        autosize: true,
+        margin: { l: 150, r: 20, t: 10, b: 60 }, // Left margin for labels
         xaxis: { gridcolor: colors.grid, title: 'Importance Score' },
         yaxis: { gridcolor: 'transparent' }
     };
@@ -596,11 +487,6 @@ function renderSimulationResults(data, simulationMethod) {
     document.getElementById('distributionChart').parentElement.style.display = 'block';
 
     renderDistributionChart(data.distribution);
-
-    // Auto-scroll to results
-    setTimeout(() => {
-        resultsSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    }, 100);
 }
 
 function renderDistributionChart(distribution) {
@@ -624,77 +510,12 @@ function renderDistributionChart(distribution) {
         font: { color: colors.textSecondary, family: "'Outfit', sans-serif" },
         xaxis: { gridcolor: colors.grid, title: 'Price' },
         yaxis: { gridcolor: colors.grid, title: 'Frequency' },
-        margin: { l: 0, r: 0, t: 0, b: 50, pad: 0 },
+        margin: { l: 40, r: 10, t: 40, b: 40, pad: 0 },
         autosize: true
     };
 
     Plotly.newPlot('distributionChart', data, layout, { responsive: true, displayModeBar: true });
 }
-
-function loadRecentSearches() {
-    const container = document.getElementById('recent-searches');
-    if (!container) return;
-
-    container.innerHTML = '';
-    const recent = JSON.parse(localStorage.getItem(RECENT_SEARCHES_KEY) || '[]');
-
-    recent.forEach(ticker => {
-        const pill = document.createElement('div');
-        pill.className = 'search-pill';
-        pill.textContent = ticker;
-        pill.onclick = () => {
-            document.getElementById('ticker').value = ticker;
-            // Optional: Auto-submit? Let's just fill for now.
-            // document.getElementById('predict-btn').click();
-        };
-        container.appendChild(pill);
-    });
-}
-
-function addToRecentSearches(ticker) {
-    if (!ticker) return;
-    let recent = JSON.parse(localStorage.getItem(RECENT_SEARCHES_KEY) || '[]');
-
-    // Remove if exists to move to top
-    recent = recent.filter(t => t !== ticker);
-
-    // Add to front
-    recent.unshift(ticker);
-
-    // Limit
-    if (recent.length > MAX_RECENT_SEARCHES) {
-        recent.pop();
-    }
-
-    localStorage.setItem(RECENT_SEARCHES_KEY, JSON.stringify(recent));
-    loadRecentSearches();
-}
-
-async function copyToClipboard() {
-    if (!currentResults || currentResults.length === 0) {
-        showToast('No results to share', 'error');
-        return;
-    }
-
-    const ticker = document.getElementById('ticker').value;
-    const price = document.getElementById('current-price').textContent;
-    const trend = document.getElementById('prediction-trend').textContent;
-
-    const text = `Stonks Daily Prediction for $${ticker}:\nPrice: ${price}\nTrend: ${trend}\n\nCheck it out!`;
-
-    try {
-        await navigator.clipboard.writeText(text);
-        showToast('Results copied to clipboard!', 'success');
-
-    } catch (err) {
-        console.error('Failed to copy: ', err);
-        showToast('Failed to copy to clipboard', 'error');
-    }
-}
-
-// Comparison Logic
-
-
 
 // Utils
 if ('serviceWorker' in navigator) {
@@ -714,34 +535,28 @@ function formatCurrency(value) {
 
 // --- Theme Handling & Initialization ---
 document.addEventListener('DOMContentLoaded', () => {
-    console.log("App.js Initialized - DOMContentLoaded (v50)");
-
-    // Init Features
-    loadRecentSearches();
+    console.log("App.js Initialized - DOMContentLoaded");
 
     // Theme Logic
     const themeToggle = document.getElementById('theme-toggle');
     const html = document.documentElement;
     const savedTheme = localStorage.getItem('theme') || 'dark';
-
-    // Initialize state
     if (savedTheme === 'light') {
         html.setAttribute('data-theme', 'light');
-        if (themeToggle) themeToggle.checked = true;
-    } else {
-        if (themeToggle) themeToggle.checked = false;
+        if (themeToggle) themeToggle.textContent = '☀️';
     }
 
     if (themeToggle) {
-        themeToggle.addEventListener('change', (e) => {
-            if (e.target.checked) {
-                // Switch to Light
-                html.setAttribute('data-theme', 'light');
-                localStorage.setItem('theme', 'light');
-            } else {
-                // Switch to Dark
+        themeToggle.addEventListener('click', () => {
+            const currentTheme = html.getAttribute('data-theme');
+            if (currentTheme === 'light') {
                 html.removeAttribute('data-theme');
                 localStorage.setItem('theme', 'dark');
+                themeToggle.textContent = '🌙';
+            } else {
+                html.setAttribute('data-theme', 'light');
+                localStorage.setItem('theme', 'light');
+                themeToggle.textContent = '☀️';
             }
             updateChartsTheme();
         });
@@ -774,15 +589,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- Event Listeners (Moved Inside DOMContentLoaded) ---
 
-    // Share Button
-    const shareBtn = document.getElementById('share-btn');
-    if (shareBtn) {
-        shareBtn.addEventListener('click', copyToClipboard);
-    }
-
-    // Comparison UI Listeners
-
-
     // 1. Prediction Form
     const predictForm = document.getElementById('prediction-form');
     if (predictForm) {
@@ -790,30 +596,16 @@ document.addEventListener('DOMContentLoaded', () => {
             e.preventDefault();
             console.log("Prediction Form Submitted");
 
-            const tickerInput = document.getElementById('ticker');
-            const ticker = tickerInput.value.toUpperCase();
+            const ticker = document.getElementById('ticker').value.toUpperCase();
             const timeframe = document.getElementById('timeframe').value;
             const modelType = document.getElementById('model-type').value;
             const period = document.getElementById('period').value;
-            const apiSource = document.getElementById('api-source').value;
-
-            // UI Updates
             const btn = document.getElementById('predict-btn');
-            const loader = document.getElementById('btn-loader');
             const resultsSection = document.getElementById('results-section');
-            const skeleton = document.getElementById('results-skeleton');
 
             resultsSection.classList.add('hidden');
-            skeleton.classList.remove('hidden'); // Show Skeleton
-
-            // Scroll to skeleton immediately
-            setTimeout(() => {
-                skeleton.scrollIntoView({ behavior: 'smooth', block: 'start' });
-            }, 100);
-
             btn.classList.add('loading');
             btn.disabled = true;
-            loader.style.display = 'block';
 
             try {
                 const response = await fetch('/predict', {
@@ -824,7 +616,6 @@ document.addEventListener('DOMContentLoaded', () => {
                         days: parseInt(timeframe),
                         model_type: modelType,
                         period: period,
-                        api_source: apiSource
                     })
                 });
 
@@ -834,81 +625,34 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
 
                 const data = await response.json();
-
-                // Save to History
-                addToRecentSearches(ticker);
-
-                // Update UI
-                skeleton.classList.add('hidden'); // Hide Skeleton
-                resultsSection.classList.remove('hidden');
                 renderResults(data);
+                resultsSection.classList.remove('hidden');
 
             } catch (error) {
                 console.error('Error:', error);
-                skeleton.classList.add('hidden'); // Hide Skeleton on error
-                showToast('Failed to fetch prediction: ' + error.message, 'error');
+                alert('Failed to fetch prediction: ' + error.message);
             } finally {
                 btn.classList.remove('loading');
                 btn.disabled = false;
-                if (loader) loader.style.display = 'none';
             }
         });
     }
 
-    // Global Keyboard Shortcuts
-    document.addEventListener('keydown', (e) => {
-        // Arrow Keys for Chart Navigation
-        if (currentHistoricalData.length > 0 && !document.getElementById('results-section').classList.contains('hidden')) {
-            const chartDiv = document.getElementById('predictionChart');
-            if (!chartDiv || !chartDiv.layout) return;
-
-            const range = chartDiv.layout.xaxis.range;
-            if (!range) return;
-
-            // Convert string dates to timestamps if needed (Plotly uses ms)
-            // But usually range is string ISO dates or linear index.
-            // If it's date, we need to shift.
-
-            // Checking if we are focused on an input
-            if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT') return;
-
-            const start = new Date(range[0]).getTime();
-            const end = new Date(range[1]).getTime();
-            const span = end - start;
-            const shift = span * 0.1; // Shift by 10%
-
-            if (e.key === 'ArrowLeft') {
-                const newRange = [new Date(start - shift), new Date(end - shift)];
-                Plotly.relayout(chartDiv, { 'xaxis.range': newRange });
-            } else if (e.key === 'ArrowRight') {
-                const newRange = [new Date(start + shift), new Date(end + shift)];
-                Plotly.relayout(chartDiv, { 'xaxis.range': newRange });
-            }
-        }
-    });
-
-    // 2. Backtest Button
-    const backtestBtn = document.getElementById('backtest-btn');
-    if (backtestBtn) {
-        backtestBtn.addEventListener('click', async (e) => {
+    // 2. Backtest Form
+    const backtestForm = document.getElementById('backtest-form');
+    if (backtestForm) {
+        backtestForm.addEventListener('submit', async (e) => {
             e.preventDefault();
-            console.log("Backtest Clicked");
-
-            const tickerInput = document.getElementById('ticker');
-            const ticker = tickerInput.value.toUpperCase();
+            const ticker = document.getElementById('ticker').value.toUpperCase();
             const period = document.getElementById('period').value;
-            const backtestSection = document.getElementById('backtest-section');
-            const loader = document.getElementById('backtest-loader');
+            const btn = document.getElementById('backtest-btn');
+            const backtestSection = document.getElementById('backtest-results');
 
-            // Re-select button to avoid scoping issues if any, but local var is fine
-            // We used 'backtestBtn' above.
-
-            if (!ticker) { showToast('Please enter a ticker symbol.', 'error'); return; }
+            if (!ticker) { alert('Please enter a ticker symbol.'); return; }
 
             backtestSection.classList.add('hidden');
-            backtestBtn.classList.add('loading');
-            backtestBtn.disabled = true;
-            if (loader) loader.style.display = 'block';
+            btn.classList.add('loading');
+            btn.disabled = true;
 
             try {
                 const response = await fetch('/backtest', {
@@ -917,26 +661,19 @@ document.addEventListener('DOMContentLoaded', () => {
                     body: JSON.stringify({ ticker: ticker, period: period })
                 });
 
-                if (!response.ok) {
-                    const txt = await response.text();
-                    throw new Error('Backtest failed: ' + txt);
-                }
-
+                if (!response.ok) throw new Error('Backtest failed');
                 const data = await response.json();
-
-                // Save to History
-                addToRecentSearches(ticker);
-
                 renderBacktestResults(data);
                 backtestSection.classList.remove('hidden');
+                // Scroll to backtest results
+                backtestSection.scrollIntoView({ behavior: 'smooth' });
 
             } catch (error) {
-                console.error('Backtest Error:', error);
-                showToast('Backtest failed: ' + error.message, 'error');
+                console.error('Error:', error);
+                alert('Backtest failed: ' + error.message);
             } finally {
-                backtestBtn.classList.remove('loading');
-                backtestBtn.disabled = false;
-                if (loader) loader.style.display = 'none';
+                btn.classList.remove('loading');
+                btn.disabled = false;
             }
         });
     }
@@ -946,15 +683,13 @@ document.addEventListener('DOMContentLoaded', () => {
     if (simulateBtn) {
         simulateBtn.addEventListener('click', async () => {
             console.log("Simulate Clicked");
-            const tickerInput = document.getElementById('ticker');
-            const ticker = tickerInput.value.toUpperCase();
+            const ticker = document.getElementById('ticker').value.toUpperCase();
             const timeframe = document.getElementById('timeframe').value;
             const period = document.getElementById('period').value;
-            const apiSource = document.getElementById('api-source').value;
             const simulationMethod = document.getElementById('simulation-method').value;
 
             if (!ticker) {
-                showToast('Please enter a ticker symbol first.', 'error');
+                alert('Please enter a ticker symbol first.');
                 return;
             }
 
@@ -969,7 +704,6 @@ document.addEventListener('DOMContentLoaded', () => {
                         ticker: ticker,
                         days: parseInt(timeframe),
                         period: period,
-                        api_source: apiSource,
                         model_type: "monte_carlo",
                         simulation_method: simulationMethod
                     })
@@ -977,15 +711,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 if (!response.ok) throw new Error('Simulation failed');
                 const data = await response.json();
-
-                // Save to History
-                addToRecentSearches(ticker);
-
                 renderSimulationResults(data, simulationMethod);
 
             } catch (error) {
-                console.error("Simulation error:", error);
-                showToast('Failed to run simulation: ' + error.message, 'error');
+                console.error('Error:', error);
+                alert('Failed to run simulation.');
             } finally {
                 simulateBtn.classList.remove('loading');
                 simulateBtn.disabled = false;
@@ -1012,7 +742,6 @@ document.addEventListener('DOMContentLoaded', () => {
         jsStatus.innerText = 'OK (Ready)';
         jsStatus.style.color = '#0f0';
     }
-
 }); // Close DOMContentLoaded
 
 function getThemeColors() {

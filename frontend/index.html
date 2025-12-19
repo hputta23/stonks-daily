@@ -8,7 +8,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="/static/style.css?v=12">
+    <link rel="stylesheet" href="/static/style.css?v=29">
     <link rel="manifest" href="/manifest.json">
     <meta name="theme-color" content="#6366f1">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -23,6 +23,15 @@
                 <span class="logo-icon">🪐</span>
                 <h1>Stonks Daily</h1>
             </div>
+            <div class="theme-switch-wrapper">
+                <label class="theme-switch" for="theme-toggle">
+                    <input type="checkbox" id="theme-toggle" />
+                    <div class="slider round">
+                        <span class="icon-sun">☀️</span>
+                        <span class="icon-moon">🌙</span>
+                    </div>
+                </label>
+            </div>
             <div class="banner-container">
                 <div class="scrolling-text">Enjoy stonking</div>
             </div>
@@ -35,8 +44,19 @@
                     <div class="form-row">
                         <div class="input-group" data-tooltip="Enter the symbol e.g., AAPL for Apple Inc.">
                             <label for="ticker">Stock Ticker</label>
-                            <input type="text" id="ticker" name="ticker" placeholder="e.g., AAPL" required
+                            <input type="text" id="ticker" name="ticker" placeholder="e.g., AAPL" value="AAPL" required
                                 autocomplete="off">
+                            <div id="recent-searches" class="recent-searches">
+                                <!-- Recent search pills injected here -->
+                            </div>
+                        </div>
+                        <div class="input-group" data-tooltip="Data Source API">
+                            <label for="api-source">Data Source</label>
+                            <select id="api-source" name="api-source">
+                                <option value="yahoo" selected>Yahoo Finance (Free)</option>
+                                <option value="alpha_vantage">Alpha Vantage (Demo)</option>
+                                <option value="mock">Mock Data (Test)</option>
+                            </select>
                         </div>
                         <div class="input-group" data-tooltip="How far into the future to predict">
                             <label for="timeframe">Prediction Timeframe</label>
@@ -50,10 +70,12 @@
                         <div class="input-group" data-tooltip="Algorithm used for price prediction">
                             <label for="model-type">Model</label>
                             <select id="model-type" name="model-type">
+                                <option value="all">Run All Models</option>
                                 <option value="random_forest" selected>Random Forest</option>
-                                <option value="svr">Support Vector Regression (SVR)</option>
                                 <option value="gradient_boosting">Gradient Boosting</option>
-                                <option value="all">Compare All Models</option>
+                                <option value="lstm">LSTM (Deep Learning)</option>
+                                <option value="ensemble">Ensemble (RF + GB)</option>
+                                <option value="svr">Support Vector Machine</option>
                             </select>
                         </div>
                         <div class="input-group">
@@ -107,8 +129,11 @@
                     </div>
     </div>
 
+
+    </div>
+
     <!-- Row 4: Chart Options -->
-    <div class="form-row">
+    <div class="form-row chart-options-row">
         <div class="input-group">
             <label>Chart Mode</label>
             <select id="chart-type">
@@ -116,25 +141,38 @@
                 <option value="line">Line</option>
             </select>
         </div>
-        <div class="input-group"
-            style="grid-column: span 3; display: flex; flex-wrap: wrap; gap: 1rem; align-items: center;">
-            <label style="width: 100%;">Indicators</label>
-            <label class="checkbox-label"><input type="checkbox" id="show-volume" checked> Volume</label>
-            <label class="checkbox-label"><input type="checkbox" id="show-sma"> SMA</label>
-            <label class="checkbox-label"><input type="checkbox" id="show-ema"> EMA</label>
-            <label class="checkbox-label"><input type="checkbox" id="show-bollinger"> Bollinger</label>
-            <label class="checkbox-label"><input type="checkbox" id="show-rsi"> RSI</label>
-            <label class="checkbox-label"><input type="checkbox" id="show-macd"> MACD</label>
+        <div class="input-group indicators-group">
+            <label>Indicators</label>
+            <div class="indicators-checkboxes">
+                <label class="checkbox-label"><input type="checkbox" id="show-volume" checked> Volume</label>
+                <label class="checkbox-label"><input type="checkbox" id="show-sma"> SMA</label>
+                <label class="checkbox-label"><input type="checkbox" id="show-ema"> EMA</label>
+                <label class="checkbox-label"><input type="checkbox" id="show-bollinger"> Bollinger</label>
+                <label class="checkbox-label"><input type="checkbox" id="show-rsi"> RSI</label>
+                <label class="checkbox-label"><input type="checkbox" id="show-macd"> MACD</label>
+            </div>
         </div>
     </div>
     </form>
     </section>
 
+    <section id="results-skeleton" class="hidden">
+        <div class="metrics-grid">
+            <div class="skeleton-card skeleton"></div>
+            <div class="skeleton-card skeleton"></div>
+            <div class="skeleton-card skeleton"></div>
+        </div>
+        <div class="skeleton-chart skeleton"></div>
+    </section>
+
     <section id="results-section" class="hidden">
         <div class="metrics-grid">
-            <div class="metric-card">
+            <div class="metric-card" style="position: relative;">
                 <h3>Current Price</h3>
                 <p class="metric-value" id="current-price">--</p>
+                <button id="share-btn" class="share-btn" title="Copy results to clipboard">
+                    📋
+                </button>
             </div>
             <div class="metric-card">
                 <h3>Predicted Trend</h3>
@@ -175,17 +213,17 @@
     </div>
     </main>
     </div>
+    <div id="toast-container"></div>
     <!-- Plotly.js -->
     <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
-    <script src="/static/sw-register.js"></script>
-    <script src="/static/app.js?v=24"></script>
+    <script src="/static/app.js?v=53"></script>
+
     <script>
+        // Service Worker Registration
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
                 navigator.serviceWorker.register('/sw.js').then(registration => {
-                    console.log('ServiceWorker registration successful with scope: ', registration.scope);
-                }, err => {
-                    console.log('ServiceWorker registration failed: ', err);
+                    registration.update();
                 });
             });
         }
