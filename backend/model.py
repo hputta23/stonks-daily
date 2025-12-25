@@ -199,11 +199,20 @@ class BasePredictor(ABC):
 import os
 # Suppress TensorFlow logs
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
-from tensorflow.keras.models import Sequential
-from tensorflow.keras.layers import LSTM, Dense, Dropout, Input
+
+try:
+    from tensorflow.keras.models import Sequential
+    from tensorflow.keras.layers import LSTM, Dense, Dropout, Input
+    TF_AVAILABLE = True
+except ImportError:
+    TF_AVAILABLE = False
+    print("TensorFlow not available. LSTM models will be disabled.")
 
 class LSTMPredictor(BasePredictor):
     def build_model(self, input_shape):
+        if not TF_AVAILABLE:
+            raise ImportError("TensorFlow is not installed. Cannot use LSTM predictor.")
+            
         model = Sequential()
         model.add(Input(shape=input_shape))
         # Lightweight LSTM for memory efficiency
