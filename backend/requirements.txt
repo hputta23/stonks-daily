@@ -7,3 +7,4 @@ pandas
 scikit-learn
 pydantic
 python-multipart
+feedparser

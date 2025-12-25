@@ -5,8 +5,7 @@ from pydantic import BaseModel
 from fastapi.middleware.cors import CORSMiddleware
 import pandas as pd
 import numpy as np
-from .data_service import fetch_stock_data, get_current_price
-from .data_service import fetch_stock_data, get_current_price
+from .data_service import fetch_stock_data, get_current_price, fetch_stock_news
 from .model import get_predictor
 import traceback
 import os
@@ -85,6 +84,17 @@ async def get_history(request: HistoryRequest):
             "period": request.period,
             "history": historical_data
         }
+    except Exception as e:
+        traceback.print_exc()
+    except Exception as e:
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/news/{ticker}")
+async def get_news(ticker: str):
+    try:
+        news_items = fetch_stock_news(ticker)
+        return {"ticker": ticker, "news": news_items}
     except Exception as e:
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=str(e))

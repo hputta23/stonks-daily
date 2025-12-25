@@ -1068,8 +1068,298 @@ body {
 .share-btn:active {
     transform: scale(0.95);
 }
-/* FAST FIX OVERRIDE */
-[data-theme="light"], [data-theme="light"] body, [data-theme="light"] html {
+
+/* =========================================
+   STOCK NEWS APP STYLES (Merged)
+   ========================================= */
+
+/* Tab Navigation */
+.tab-nav {
+    display: flex;
+    justify-content: center;
+    gap: 1rem;
+    margin-bottom: 2rem;
+}
+
+.tab-btn {
+    background: transparent;
+    border: 1px solid var(--border-color);
+    color: var(--text-secondary);
+    padding: 0.75rem 1.5rem;
+    border-radius: 99px;
+    cursor: pointer;
+    font-size: 1rem;
+    font-weight: 600;
+    transition: var(--transition);
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    min-width: auto;
+    height: auto;
+    box-shadow: none;
+}
+
+.tab-btn:hover {
+    background: rgba(255, 255, 255, 0.05);
+    color: var(--text-primary);
+    transform: translateY(-1px);
+}
+
+.tab-btn.active {
+    background: var(--primary-gradient);
+    border-color: transparent;
+    color: white;
+    box-shadow: var(--shadow-md);
+}
+
+.tab-content {
+    display: none;
+    animation: fadeIn 0.3s ease;
+}
+
+.tab-content.active {
+    display: block;
+}
+
+/* News Search Section */
+.search-section {
+    display: flex;
+    justify-content: center;
+    margin-bottom: 2rem;
+}
+
+.search-bar {
+    display: flex;
+    width: 100%;
+    max-width: 600px;
+    background: var(--card-bg);
+    border: 1px solid var(--border-color);
+    /* mapped from --border */
+    border-radius: 99px;
+    padding: 0.5rem;
+    box-shadow: var(--shadow-md);
+    /* mapped from --shadow */
+    transition: var(--transition);
+}
+
+.search-bar:focus-within {
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 3px var(--primary-glow);
+}
+
+#news-ticker-input {
+    flex: 1;
+    background: transparent;
+    border: none;
+    color: var(--text-primary);
+    font-size: 1.1rem;
+    padding: 0.5rem 1.5rem;
+    outline: none;
+    text-transform: uppercase;
+}
+
+.icon-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 48px;
+    height: 48px;
+    border: none;
+    border-radius: 50%;
+    cursor: pointer;
+    transition: var(--transition);
+    background: transparent;
+    color: var(--text-secondary);
+    min-width: 48px;
+    /* Override global button min-width */
+    box-shadow: none;
+}
+
+.icon-btn:hover {
+    background: rgba(255, 255, 255, 0.1);
+    color: var(--text-primary);
+    transform: none;
+    /* simple hover */
+}
+
+/* Re-use search-btn from main app but override for round shape */
+#news-search-section .search-btn {
+    width: 48px;
+    height: 48px;
+    padding: 0;
+    border-radius: 50%;
+    min-width: 48px;
+    margin-left: 0.5rem;
+}
+
+/* News Section Layout */
+.news-section {
+    display: flex;
+    flex-direction: column;
+}
+
+.section-header-row {
+    display: flex;
+    align-items: center;
+    margin: 2rem 0 1rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.section-title {
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+.badge {
+    background: rgba(99, 102, 241, 0.15);
+    /* primary low opacity */
+    color: var(--primary-color);
+    padding: 0.25rem 0.75rem;
+    border-radius: 99px;
+    font-size: 0.9rem;
+    font-weight: 600;
+    text-transform: uppercase;
+}
+
+#news-container {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1.5rem;
+    width: 100%;
+}
+
+.ticker-section {
+    background: var(--card-bg);
+    border: 1px solid var(--glass-border);
+    border-radius: 1rem;
+    /* mapped from --radius */
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+}
+
+.ticker-section h3 {
+    padding: 1rem 1.5rem;
+    background: rgba(255, 255, 255, 0.02);
+    border-bottom: 1px solid var(--border-color);
+    margin: 0;
+    font-size: 1.1rem;
+}
+
+/* Search Results Layout */
+#news-search-results .ticker-section {
+    margin: 0 auto;
+    width: 100%;
+    grid-template-columns: 1fr;
+}
+
+.single-view {
+    background: var(--card-bg);
+    border: 1px solid var(--glass-border);
+    border-radius: 1rem;
+    overflow: hidden;
+}
+
+.single-view h3 {
+    padding: 1rem 1.5rem;
+    border-bottom: 1px solid var(--border-color);
+    margin: 0;
+}
+
+/* Table Styles */
+.news-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.95rem;
+}
+
+.news-table th,
+.news-table td {
+    padding: 1rem 1.5rem;
+    text-align: left;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.news-table th {
+    background: rgba(15, 23, 42, 0.5);
+    /* Keep dark tint or use vars */
+    color: var(--text-secondary);
+    font-weight: 500;
+    font-size: 0.85rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+[data-theme="light"] .news-table th {
+    background: #f1f5f9;
+}
+
+.news-table tr:hover td {
+    background: rgba(255, 255, 255, 0.02);
+}
+
+[data-theme="light"] .news-table tr:hover td {
+    background: rgba(0, 0, 0, 0.02);
+}
+
+.headline-link {
+    color: var(--text-primary);
+    text-decoration: none;
+    font-weight: 500;
+    display: block;
+    transition: color 0.2s;
+}
+
+.headline-link:hover {
+    color: var(--primary-color);
+    text-decoration: underline;
+}
+
+.sentiment-positive {
+    color: var(--accent-green);
+}
+
+.sentiment-negative {
+    color: var(--accent-red);
+}
+
+.news-source {
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+}
+
+.divider {
+    height: 1px;
+    background: var(--border-color);
+    margin: 2rem 0;
+}
+
+/* Responsive */
+@media (max-width: 1024px) {
+    #news-container {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+@media (max-width: 768px) {
+    #news-container {
+        grid-template-columns: 1fr;
+    }
+
+    .search-bar {
+        max-width: 100%;
+    }
+}
+
+/* FAST FIX OVERRIDE (Keep at bottom) */
+[data-theme="light"],
+[data-theme="light"] body,
+[data-theme="light"] html {
     background-color: #ffffff !important;
     background-image: none !important;
     background: #ffffff !important;

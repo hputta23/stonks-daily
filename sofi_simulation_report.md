@@ -1,6 +1,6 @@
 # SOFI Stock Simulation Report
-**Date:** 2025-12-02
-**Current Price:** $29.51
+**Date:** 2025-12-24
+**Current Price:** $27.48
 **Simulation Horizon:** 30 Days
 **Iterations:** 1000 per model
 
@@ -8,12 +8,12 @@
 
 | Model | Expected Price (Mean) | Bear Case (5th %) | Bull Case (95th %) | Volatility (Std Dev) |
 |---|---|---|---|---|
-| Geometric Brownian Motion (GBM) | $31.88 | $21.69 | $44.09 | $6.90 |
-| Merton Jump-Diffusion | $30.68 | $20.52 | $43.52 | $7.16 |
-| Heston Stochastic Volatility | $30.86 | $30.09 | $31.28 | $0.41 |
-| Historical Bootstrapping | $32.54 | $22.54 | $45.09 | $7.18 |
-| Ornstein-Uhlenbeck (Mean Reverting) | $14.74 | $2.18 | $28.75 | $7.82 |
-| CEV Model | $30.95 | $25.74 | $36.63 | $3.26 |
+| Geometric Brownian Motion (GBM) | $29.34 | $20.59 | $40.46 | $6.06 |
+| Merton Jump-Diffusion | $28.08 | $18.77 | $39.19 | $6.24 |
+| Heston Stochastic Volatility | $28.23 | $27.45 | $28.68 | $0.46 |
+| Historical Bootstrapping | $29.94 | $20.52 | $40.98 | $6.39 |
+| Ornstein-Uhlenbeck (Mean Reverting) | $15.34 | $1.96 | $29.53 | $8.30 |
+| CEV Model | $28.49 | $23.79 | $34.20 | $3.08 |
 
 ## Analysis
 - **GBM**: Standard baseline, assumes constant volatility.

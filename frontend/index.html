@@ -35,182 +35,249 @@
             <div class="banner-container">
                 <div class="scrolling-text">Enjoy stonking</div>
             </div>
+
+            <!-- Tab Navigation -->
+            <nav class="tab-nav">
+                <button class="tab-btn active" data-tab="prediction-tab">
+                    <span class="icon">📊</span> Analysis
+                </button>
+                <button class="tab-btn" data-tab="news-tab">
+                    <span class="icon">📰</span> News
+                </button>
+            </nav>
         </header>
 
         <main>
-            <section class="control-panel">
-                <form id="prediction-form">
-                    <!-- Row 1: Prediction -->
-                    <div class="form-row">
-                        <div class="input-group" data-tooltip="Enter the symbol e.g., AAPL for Apple Inc.">
-                            <label for="ticker">Stock Ticker</label>
-                            <input type="text" id="ticker" name="ticker" placeholder="e.g., AAPL" value="AAPL" required
-                                autocomplete="off">
-                            <div id="recent-searches" class="recent-searches">
-                                <!-- Recent search pills injected here -->
+            <section id="prediction-tab" class="tab-content active">
+                <section class="control-panel">
+                    <form id="prediction-form">
+                        <!-- Row 1: Prediction -->
+                        <div class="form-row">
+                            <div class="input-group" data-tooltip="Enter the symbol e.g., AAPL for Apple Inc.">
+                                <label for="ticker">Stock Ticker</label>
+                                <input type="text" id="ticker" name="ticker" placeholder="e.g., AAPL" value="AAPL"
+                                    required autocomplete="off">
+                                <div id="recent-searches" class="recent-searches">
+                                    <!-- Recent search pills injected here -->
+                                </div>
+                            </div>
+                            <div class="input-group" data-tooltip="Data Source API">
+                                <label for="api-source">Data Source</label>
+                                <select id="api-source" name="api-source">
+                                    <option value="yahoo" selected>Yahoo Finance (Free)</option>
+                                    <option value="alpha_vantage">Alpha Vantage (Demo)</option>
+                                    <option value="mock">Mock Data (Test)</option>
+                                </select>
+                            </div>
+                            <div class="input-group" data-tooltip="How far into the future to predict">
+                                <label for="timeframe">Prediction Timeframe</label>
+                                <select id="timeframe" name="timeframe">
+                                    <option value="7">Next 7 Days</option>
+                                    <option value="14">Next 14 Days</option>
+                                    <option value="30" selected>Next 30 Days</option>
+                                    <option value="60">Next 60 Days</option>
+                                </select>
+                            </div>
+                            <div class="input-group" data-tooltip="Algorithm used for price prediction">
+                                <label for="model-type">Model</label>
+                                <select id="model-type" name="model-type">
+                                    <option value="all">Run All Models</option>
+                                    <option value="random_forest" selected>Random Forest</option>
+                                    <option value="gradient_boosting">Gradient Boosting</option>
+                                    <option value="lstm">LSTM (Deep Learning)</option>
+                                    <option value="ensemble">Ensemble (RF + GB)</option>
+                                    <option value="svr">Support Vector Machine</option>
+                                </select>
+                            </div>
+                            <div class="input-group">
+                                <label>&nbsp;</label>
+                                <button type="submit" id="predict-btn">
+                                    <span class="btn-text">Generate Prediction</span>
+                                    <div class="loader" id="btn-loader"></div>
+                                </button>
                             </div>
                         </div>
-                        <div class="input-group" data-tooltip="Data Source API">
-                            <label for="api-source">Data Source</label>
-                            <select id="api-source" name="api-source">
-                                <option value="yahoo" selected>Yahoo Finance (Free)</option>
-                                <option value="alpha_vantage">Alpha Vantage (Demo)</option>
-                                <option value="mock">Mock Data (Test)</option>
-                            </select>
+
+                        <!-- Row 2: Simulation -->
+                        <div class="form-row">
+                            <div class="input-group" data-tooltip="Stochastic model for Monte Carlo sims">
+                                <label>Simulation Model</label>
+                                <select id="simulation-method">
+                                    <option value="gbm" selected>Geometric Brownian Motion (GBM)</option>
+                                    <option value="monte_carlo">Standard Monte Carlo</option>
+                                    <option value="heston">Heston Stochastic Volatility</option>
+                                    <option value="jump_diffusion">Merton Jump-Diffusion</option>
+                                    <option value="bootstrapping">Bootstrapping (Historical)</option>
+                                </select>
+                            </div>
+                            <div class="input-group">
+                                <label>&nbsp;</label>
+                                <button type="button" id="simulate-btn" class="simulation-btn">Simulate</button>
+                            </div>
                         </div>
-                        <div class="input-group" data-tooltip="How far into the future to predict">
-                            <label for="timeframe">Prediction Timeframe</label>
-                            <select id="timeframe" name="timeframe">
-                                <option value="7">Next 7 Days</option>
-                                <option value="14">Next 14 Days</option>
-                                <option value="30" selected>Next 30 Days</option>
-                                <option value="60">Next 60 Days</option>
-                            </select>
+
+                        <!-- Row 3: Backtest -->
+                        <div class="form-row">
+                            <div class="input-group" data-tooltip="Historical data range for analysis">
+                                <label for="period">Chart History</label>
+                                <select id="period" name="period">
+                                    <option value="1mo">1 Month</option>
+                                    <option value="3mo">3 Months</option>
+                                    <option value="6mo">6 Months</option>
+                                    <option value="1y" selected>1 Year</option>
+                                    <option value="2y">2 Years</option>
+                                    <option value="5y">5 Years</option>
+                                    <option value="max">Max</option>
+                                </select>
+                            </div>
+                            <div class="input-group">
+                                <label>&nbsp;</label>
+                                <button type="button" id="backtest-btn" class="secondary-btn">
+                                    <span class="btn-text">Run Backtest</span>
+                                    <div class="loader" id="backtest-loader"></div>
+                                </button>
+                            </div>
                         </div>
-                        <div class="input-group" data-tooltip="Algorithm used for price prediction">
-                            <label for="model-type">Model</label>
-                            <select id="model-type" name="model-type">
-                                <option value="all">Run All Models</option>
-                                <option value="random_forest" selected>Random Forest</option>
-                                <option value="gradient_boosting">Gradient Boosting</option>
-                                <option value="lstm">LSTM (Deep Learning)</option>
-                                <option value="ensemble">Ensemble (RF + GB)</option>
-                                <option value="svr">Support Vector Machine</option>
-                            </select>
+
+
+                        <!-- Row 4: Chart Options -->
+                        <div class="form-row chart-options-row">
+                            <div class="input-group">
+                                <label>Chart Mode</label>
+                                <select id="chart-type">
+                                    <option value="candlestick" selected>Candlestick</option>
+                                    <option value="line">Line</option>
+                                </select>
+                            </div>
+                            <div class="input-group indicators-group">
+                                <label>Indicators</label>
+                                <div class="indicators-checkboxes">
+                                    <label class="checkbox-label"><input type="checkbox" id="show-volume" checked>
+                                        Volume</label>
+                                    <label class="checkbox-label"><input type="checkbox" id="show-sma"> SMA</label>
+                                    <label class="checkbox-label"><input type="checkbox" id="show-ema"> EMA</label>
+                                    <label class="checkbox-label"><input type="checkbox" id="show-bollinger">
+                                        Bollinger</label>
+                                    <label class="checkbox-label"><input type="checkbox" id="show-rsi"> RSI</label>
+                                    <label class="checkbox-label"><input type="checkbox" id="show-macd"> MACD</label>
+                                </div>
+                            </div>
                         </div>
-                        <div class="input-group">
-                            <label>&nbsp;</label>
-                            <button type="submit" id="predict-btn">
-                                <span class="btn-text">Generate Prediction</span>
-                                <div class="loader" id="btn-loader"></div>
+                    </form>
+                </section>
+
+                <section id="results-skeleton" class="hidden">
+                    <div class="metrics-grid">
+                        <div class="skeleton-card skeleton"></div>
+                        <div class="skeleton-card skeleton"></div>
+                        <div class="skeleton-card skeleton"></div>
+                    </div>
+                    <div class="skeleton-chart skeleton"></div>
+                </section>
+
+                <section id="results-section" class="hidden">
+                    <div class="metrics-grid">
+                        <div class="metric-card" style="position: relative;">
+                            <h3>Current Price</h3>
+                            <p class="metric-value" id="current-price">--</p>
+                            <button id="share-btn" class="share-btn" title="Copy results to clipboard">
+                                📋
                             </button>
                         </div>
-                    </div>
-
-                    <!-- Row 2: Simulation -->
-                    <div class="form-row">
-                        <div class="input-group" data-tooltip="Stochastic model for Monte Carlo sims">
-                            <label>Simulation Model</label>
-                            <select id="simulation-method">
-                                <option value="gbm" selected>Geometric Brownian Motion (GBM)</option>
-                                <option value="monte_carlo">Standard Monte Carlo</option>
-                                <option value="heston">Heston Stochastic Volatility</option>
-                                <option value="jump_diffusion">Merton Jump-Diffusion</option>
-                                <option value="bootstrapping">Bootstrapping (Historical)</option>
-                            </select>
+                        <div class="metric-card">
+                            <h3>Predicted Trend</h3>
+                            <p class="metric-value" id="prediction-trend">--</p>
                         </div>
-                        <div class="input-group">
-                            <label>&nbsp;</label>
-                            <button type="button" id="simulate-btn" class="simulation-btn">Simulate</button>
+                        <div class="metric-card">
+                            <h3>Model Loss (MSE)</h3>
+                            <p class="metric-value" id="model-loss">--</p>
                         </div>
                     </div>
 
-                    <!-- Row 3: Backtest -->
-                    <div class="form-row">
-                        <div class="input-group" data-tooltip="Historical data range for analysis">
-                            <label for="period">Chart History</label>
-                            <select id="period" name="period">
-                                <option value="1mo">1 Month</option>
-                                <option value="3mo">3 Months</option>
-                                <option value="6mo">6 Months</option>
-                                <option value="1y" selected>1 Year</option>
-                                <option value="2y">2 Years</option>
-                                <option value="5y">5 Years</option>
-                                <option value="max">Max</option>
-                            </select>
-                        </div>
-                        <div class="input-group">
-                            <label>&nbsp;</label>
-                            <button type="button" id="backtest-btn" class="secondary-btn">
-                                <span class="btn-text">Run Backtest</span>
-                                <div class="loader" id="backtest-loader"></div>
-                            </button>
+                    <div class="chart-container">
+                        <div id="predictionChart"></div>
+                    </div>
+
+                    <h2 id="distribution-title" style="margin-top: 2rem;">Price Distribution</h2>
+                    <div class="chart-container" style="height: 300px;">
+                        <div id="distributionChart"></div>
+                    </div>
+                </section>
+
+                <div id="backtest-section" class="hidden">
+                    <h2>Backtest Results</h2>
+                    <div id="backtest-metrics" class="metrics-grid">
+                        <!-- Metrics injected here -->
+                    </div>
+                    <div class="chart-container">
+                        <div id="backtestChart"></div>
+                    </div>
+
+                    <!-- Feature Importance Section -->
+                    <div id="feature-importance-section" class="hidden" style="margin-top: 2rem;">
+                        <h3>Model Feature Importance</h3>
+                        <div class="chart-container">
+                            <div id="featureImportanceChart"></div>
                         </div>
                     </div>
+                </div>
     </div>
-
-
-    </div>
-
-    <!-- Row 4: Chart Options -->
-    <div class="form-row chart-options-row">
-        <div class="input-group">
-            <label>Chart Mode</label>
-            <select id="chart-type">
-                <option value="candlestick" selected>Candlestick</option>
-                <option value="line">Line</option>
-            </select>
-        </div>
-        <div class="input-group indicators-group">
-            <label>Indicators</label>
-            <div class="indicators-checkboxes">
-                <label class="checkbox-label"><input type="checkbox" id="show-volume" checked> Volume</label>
-                <label class="checkbox-label"><input type="checkbox" id="show-sma"> SMA</label>
-                <label class="checkbox-label"><input type="checkbox" id="show-ema"> EMA</label>
-                <label class="checkbox-label"><input type="checkbox" id="show-bollinger"> Bollinger</label>
-                <label class="checkbox-label"><input type="checkbox" id="show-rsi"> RSI</label>
-                <label class="checkbox-label"><input type="checkbox" id="show-macd"> MACD</label>
-            </div>
-        </div>
-    </div>
-    </form>
     </section>
 
-    <section id="results-skeleton" class="hidden">
-        <div class="metrics-grid">
-            <div class="skeleton-card skeleton"></div>
-            <div class="skeleton-card skeleton"></div>
-            <div class="skeleton-card skeleton"></div>
-        </div>
-        <div class="skeleton-chart skeleton"></div>
-    </section>
-
-    <section id="results-section" class="hidden">
-        <div class="metrics-grid">
-            <div class="metric-card" style="position: relative;">
-                <h3>Current Price</h3>
-                <p class="metric-value" id="current-price">--</p>
-                <button id="share-btn" class="share-btn" title="Copy results to clipboard">
-                    📋
+    <!-- News Tab Content -->
+    <section id="news-tab" class="tab-content">
+        <section id="news-search-section" class="search-section">
+            <div class="search-bar">
+                <input type="text" id="news-ticker-input" placeholder="Search News Ticker (e.g., AAPL)" maxlength="5">
+                <button id="news-home-btn" class="home-btn icon-btn" title="Reset to Defaults">
+                    <!-- Home Icon SVG -->
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
+                        stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+                        <polyline points="9 22 9 12 15 12 15 22"></polyline>
+                    </svg>
+                </button>
+                <button id="news-search-btn" class="search-btn">
+                    <!-- Search Icon SVG -->
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
+                        stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="11" cy="11" r="8"></circle>
+                        <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                    </svg>
                 </button>
             </div>
-            <div class="metric-card">
-                <h3>Predicted Trend</h3>
-                <p class="metric-value" id="prediction-trend">--</p>
-            </div>
-            <div class="metric-card">
-                <h3>Model Loss (MSE)</h3>
-                <p class="metric-value" id="model-loss">--</p>
-            </div>
-        </div>
+        </section>
 
-        <div class="chart-container">
-            <div id="predictionChart"></div>
-        </div>
+        <section id="news-main-section" class="news-section">
+            <div class="section-header">
+                <span id="news-ticker-badge" class="badge hidden"></span>
+            </div>
 
-        <h2 id="distribution-title" style="margin-top: 2rem;">Price Distribution</h2>
-        <div class="chart-container" style="height: 300px;">
-            <div id="distributionChart"></div>
-        </div>
+            <!-- Search Results Section -->
+            <div id="news-search-results-container" class="hidden">
+                <h3 class="section-title">Search Results</h3>
+                <div id="news-search-results"></div>
+                <div class="divider"></div>
+            </div>
+
+            <div id="market-overview-header" class="section-header-row">
+                <h3 class="section-title">Market Overview</h3>
+            </div>
+            <div id="news-loading" class="loading hidden">
+                <div class="spinner"></div>
+                <p>Fetching market insights...</p>
+            </div>
+            <div id="news-error-message" class="error-message hidden">
+                <p id="news-error-text"></p>
+            </div>
+
+            <!-- Dynamic Content Container -->
+            <div id="news-container">
+                <!-- News items injected here -->
+            </div>
+        </section>
     </section>
 
-    <div id="backtest-section" class="hidden">
-        <h2>Backtest Results</h2>
-        <div id="backtest-metrics" class="metrics-grid">
-            <!-- Metrics injected here -->
-        </div>
-        <div class="chart-container">
-            <div id="backtestChart"></div>
-        </div>
-
-        <!-- Feature Importance Section -->
-        <div id="feature-importance-section" class="hidden" style="margin-top: 2rem;">
-            <h3>Model Feature Importance</h3>
-            <div class="chart-container">
-                <div id="featureImportanceChart"></div>
-            </div>
-        </div>
-    </div>
     </main>
     </div>
     <div id="toast-container"></div>
@@ -218,7 +285,50 @@
     <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
     <script src="/static/app.js?v=53"></script>
 
+    <script src="/static/sentiment.js?v=1"></script>
+    <script src="/static/news.js?v=2"></script>
     <script>
+        // Tab Switching Logic
+        document.addEventListener('DOMContentLoaded', () => {
+            const tabs = document.querySelectorAll('.tab-btn');
+            const contents = document.querySelectorAll('.tab-content');
+            let newsAppInitialized = false;
+
+            tabs.forEach(tab => {
+                tab.addEventListener('click', () => {
+                    const targetId = tab.getAttribute('data-tab');
+                    console.log('Tab clicked:', targetId);
+
+                    // Toggle Tabs
+                    tabs.forEach(t => t.classList.remove('active'));
+                    tab.classList.add('active');
+
+                    // Toggle Content
+                    contents.forEach(c => {
+                        console.log('Checking content:', c.id);
+                        c.classList.remove('active');
+                        if (c.id === targetId) {
+                            c.classList.add('active');
+                            console.log('Activated content:', c.id);
+                        }
+                    });
+
+                    // Initialize News App if needed
+                    if (targetId === 'news-tab' && !newsAppInitialized) {
+                        console.log('Initializing News App...');
+                        if (window.StockNewsApp) {
+                            window.newsApp = new StockNewsApp();
+                            window.newsApp.init();
+                            console.log('News App Init called');
+                        } else {
+                            console.error('StockNewsApp not found on window!');
+                        }
+                        newsAppInitialized = true;
+                    }
+                });
+            });
+        });
+
         // Service Worker Registration
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {

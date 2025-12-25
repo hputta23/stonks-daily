@@ -121,3 +121,45 @@ def get_current_price(ticker: str):
         return stock.fast_info.last_price
     except:
         return None
+
+def fetch_stock_news(ticker: str):
+    """
+    Fetches news for a given stock ticker using Google News RSS.
+    """
+    import feedparser
+    import urllib.parse
+    
+    encoded_ticker = urllib.parse.quote(ticker)
+    rss_url = f"https://news.google.com/rss/search?q={encoded_ticker}+stock&hl=en-US&gl=US&ceid=US:en"
+    
+    feed = feedparser.parse(rss_url)
+    
+    news_items = []
+    
+    for entry in feed.entries:
+        # Extract source from title if possible (Google News format: "Title - Source")
+        title = entry.title
+        source = "Google News"
+        
+        if " - " in title:
+            parts = title.rsplit(" - ", 1)
+            title = parts[0]
+            source = parts[1]
+        
+        # Parse published date
+        try:
+            # entry.published_parsed is a time.struct_time
+            dt = datetime(*entry.published_parsed[:6])
+            timestamp = dt.timestamp()
+        except:
+            timestamp = datetime.now().timestamp()
+            
+        news_items.append({
+            "headline": title,
+            "url": entry.link,
+            "source": source,
+            "datetime": timestamp,
+            "description": entry.summary if 'summary' in entry else ""
+        })
+        
+    return news_items

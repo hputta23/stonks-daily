@@ -15,7 +15,7 @@ You can host this application for **free** on platforms like **Render**, **Railw
 
 3.  **Configure**:
     *   **Runtime**: Python 3
-    *   **Build Command**: `pip install -r requirements.txt`
+    *   **Build Command**: `pip install -r requirements.txt` (Render should auto-detect `runtime.txt` for Python 3.9.18)
     *   **Start Command**: `uvicorn backend.main:app --host 0.0.0.0 --port $PORT`
     *   (Or just let it auto-detect the `Procfile` I created for you).
     *   **Instance Type**: Free
